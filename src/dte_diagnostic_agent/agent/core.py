@@ -167,7 +167,7 @@ class DTEBaseDiagnosticAgent:
             similar_cases=similar_cases,
             recommended_solutions=solutions,
             collected_evidence=context.collected_data,
-            diagnostic_steps=[{"step": s.name, "result": "executed"} for s in context.collected_data.keys()],
+            diagnostic_steps=[{"step": s, "result": "executed"} for s in context.collected_data.keys()],
             next_steps=next_steps,
             escalation_needed=self._check_escalation(top_hypothesis)
         )
