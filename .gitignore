@@ -1,3 +1,7 @@
 *.log
 .env
 *.pyc
+*.csv
+
+data/
+logs/
