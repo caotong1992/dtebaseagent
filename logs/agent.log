@@ -257,3 +257,6 @@ Traceback (most recent call last):
     diagnostic_steps=[{"step": s.name, "result": "executed"} for s in context.collected_data.keys()],
                                ^^^^^^
 AttributeError: 'str' object has no attribute 'name'
+2026-05-05 14:20:20,523 - __main__ - INFO - [__main__.py:481] - DTE Diagnostic Agent v1.0.0
+2026-05-05 14:20:20,523 - __main__ - INFO - [__main__.py:482] - Configuration loaded from: config.yaml
+2026-05-05 14:20:20,523 - __main__ - INFO - [__main__.py:485] - Dry-run mode: Configuration validated successfully

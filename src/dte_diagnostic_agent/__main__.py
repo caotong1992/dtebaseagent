@@ -7,12 +7,14 @@ Supports command-line arguments for configuration and implements graceful shutdo
 import argparse
 import logging
 import os
+import re
 import signal
 import sys
 from pathlib import Path
 from typing import Any
 
 import yaml
+from dotenv import load_dotenv
 
 from pydantic import BaseModel, Field
 
@@ -160,8 +162,38 @@ def find_config_file(config_path: Path | None = None) -> Path | None:
     return None
 
 
+def _expand_env_vars(data: Any) -> Any:
+    """Recursively replace environment variable placeholders in config.
+
+    Supports ${VAR_NAME} format for environment variable references.
+
+    Args:
+        data: Configuration data (dict, list, str, or other)
+
+    Returns:
+        Configuration data with environment variables expanded
+    """
+    if isinstance(data, str):
+        pattern = r'\$\{([^}]+)\}'
+        def replace(match):
+            var_name = match.group(1)
+            value = os.environ.get(var_name)
+            if value is None:
+                return match.group(0)
+            return value
+        return re.sub(pattern, replace, data)
+    elif isinstance(data, dict):
+        return {k: _expand_env_vars(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [_expand_env_vars(item) for item in data]
+    return data
+
+
 def load_config(config_path: Path | None = None) -> AppConfig:
     """Load configuration from file.
+
+    Environment variables are loaded from .env file if present.
+    Config values can reference env vars using ${VAR_NAME} format.
 
     Args:
         config_path: Optional path to configuration file
@@ -173,11 +205,18 @@ def load_config(config_path: Path | None = None) -> AppConfig:
         FileNotFoundError: If config file is specified but not found
         yaml.YAMLError: If config file is invalid YAML
     """
+    load_dotenv()
+    
+    env_file = Path(".env")
+    if env_file.exists():
+        load_dotenv(env_file)
+
     found_path = find_config_file(config_path)
 
     if found_path:
         with open(found_path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
+        data = _expand_env_vars(data)
         config = AppConfig(**data)
     else:
         config = AppConfig()

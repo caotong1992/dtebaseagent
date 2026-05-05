@@ -1,9 +1,16 @@
+# DTE Diagnostic Agent Configuration
+# 
+# Environment variables can be referenced using ${VAR_NAME} format.
+# Create a .env file from .env.example to configure sensitive values.
+
 server:
   host: 0.0.0.0
   port: 8080
   workers: 1
 
 llm:
+  # API key for LLM service - use environment variable ${LLM_API_KEY} or set directly
+  # Set LLM_API_KEY in .env file or as system environment variable
   api_key: ${LLM_API_KEY}
   base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
   model_name: glm-5
