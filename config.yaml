@@ -4,7 +4,7 @@ server:
   workers: 1
 
 llm:
-  api_key: sk-a21aee9f23054bf4ba62b7ceed2e54cf
+  api_key: ${LLM_API_KEY}
   base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
   model_name: glm-5
   temperature: 0.1
