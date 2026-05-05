@@ -1,0 +1,36 @@
+server:
+  host: 0.0.0.0
+  port: 8080
+  workers: 1
+
+llm:
+  api_key: sk-a21aee9f23054bf4ba62b7ceed2e54cf
+  base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+  model_name: glm-5
+  temperature: 0.1
+  max_iterations: 15
+
+storage:
+  session_dir: ./data/sessions
+  case_dir: ./cases
+  log_dir: ./logs
+
+logging:
+  level: INFO
+  file: ./logs/agent.log
+  max_size: 10MB
+  backup_count: 5
+
+auth:
+  api_keys:
+    - test-api-key-123
+  env_key: DTE_DIAG_API_KEY
+
+knowledge_base:
+  mode: local
+  local:
+    case_dir: ./cases
+  remote:
+    api_url: https://kb-api.example.com
+    api_key: null
+    timeout: 30

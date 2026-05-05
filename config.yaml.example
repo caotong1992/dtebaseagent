@@ -1,0 +1,65 @@
+# DTE Diagnostic Agent 配置文件示例
+# 复制此文件为 config.yaml 并根据实际环境修改配置
+
+# 服务配置
+server:
+  host: 0.0.0.0
+  port: 8080
+  workers: 1
+
+# OpenAI API配置
+llm:
+  api_key: your-openai-api-key
+  base_url: https://api.openai.com/v1
+  model_name: gpt-4o
+  temperature: 0.1
+  max_iterations: 15
+
+# 数据存储配置
+# 诊断记录按自然月存储为CSV文件，格式: sessions_YYYY-MM.csv
+storage:
+  session_dir: ./data/sessions
+  case_dir: ./cases
+  log_dir: ./logs
+
+# 日志配置
+logging:
+  level: INFO
+  file: /var/log/dte-diagnostic-agent/agent.log
+  max_size: 10MB
+  backup_count: 5
+
+# API认证配置
+auth:
+  api_keys:
+    - your-api-key-1
+    - your-api-key-2
+  env_key: DTE_DIAG_API_KEY
+
+# 集群连接配置
+clusters:
+  prod-01:
+    kubeconfig: /path/to/kubeconfig-prod-01
+    ssh_key: ~/.ssh/id_rsa_prod
+  prod-02:
+    kubeconfig: /path/to/kubeconfig-prod-02
+    ssh_key: ~/.ssh/id_rsa_prod
+  dev-01:
+    kubeconfig: null
+    ssh_key: ~/.ssh/id_rsa_dev
+
+# 知识库配置
+knowledge_base:
+  # 模式选择: local(本地Markdown文件) / remote(第三方知识库API)
+  mode: local
+  
+  # 本地Markdown模式配置
+  local:
+    case_dir: ./cases
+  
+  # 远程知识库模式配置(当mode为remote时使用)
+  remote:
+    api_url: https://kb-api.example.com
+    api_key: null
+    timeout: 30
+    headers: {}

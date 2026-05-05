@@ -1,0 +1,259 @@
+2026-05-04 22:26:30,392 - __main__ - INFO - [__main__.py:366] - Received SIGINT, initiating graceful shutdown...
+2026-05-04 22:26:30,392 - __main__ - INFO - [__main__.py:366] - Received SIGINT, initiating graceful shutdown...
+2026-05-04 22:26:30,393 - httpcore.http11 - DEBUG - [_trace.py:87] - receive_response_headers.failed exception=CancelledError()
+2026-05-04 22:26:30,393 - httpcore.http11 - DEBUG - [_trace.py:87] - response_closed.started
+2026-05-04 22:26:30,394 - httpcore.http11 - DEBUG - [_trace.py:87] - response_closed.failed exception=CancelledError("Cancelled via cancel scope 1a248a22ad0 by <Task cancelling name='Task-6' coro=<RequestResponseCycle.run_asgi() running at D:\\devtools\\python 3.11\\Lib\\site-packages\\uvicorn\\protocols\\http\\h11_impl.py:415> cb=[set.discard(), gather.<locals>._done_callback() at D:\\devtools\\python 3.11\\Lib\\asyncio\\tasks.py:754]>")
+2026-05-04 22:26:39,372 - __main__ - INFO - [__main__.py:442] - DTE Diagnostic Agent v1.0.0
+2026-05-04 22:26:39,372 - __main__ - INFO - [__main__.py:443] - Configuration loaded from: config.yaml
+2026-05-04 22:26:39,373 - __main__ - INFO - [__main__.py:452] - Starting server on 0.0.0.0:8080
+2026-05-04 22:26:39,373 - __main__ - INFO - [__main__.py:453] - Workers: 1
+2026-05-04 22:26:39,373 - __main__ - INFO - [__main__.py:454] - Log level: DEBUG
+2026-05-04 22:26:39,373 - asyncio - DEBUG - [proactor_events.py:633] - Using proactor: IocpProactor
+2026-05-04 22:26:39,401 - __main__ - INFO - [main.py:63] - Starting DTE Diagnostic Agent API v0.1.0
+2026-05-04 22:26:39,401 - __main__ - INFO - [main.py:66] - Server listening on 0.0.0.0:8080
+2026-05-04 22:26:39,401 - __main__ - INFO - [main.py:67] - API keys configured: Yes
+2026-05-04 22:26:39,402 - __main__ - INFO - [main.py:68] - Session storage directory: ./data/sessions
+2026-05-04 22:26:39,402 - __main__ - INFO - [main.py:69] - LLM base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2026-05-04 22:26:39,402 - __main__ - INFO - [main.py:70] - LLM model_name: glm-5
+2026-05-04 22:26:39,402 - __main__ - INFO - [main.py:71] - LLM temperature: 0.1
+2026-05-04 22:26:39,402 - __main__ - INFO - [main.py:73] - Knowledge base mode: local
+2026-05-04 22:26:44,437 - dte_diagnostic_agent.api.routes.diagnose - INFO - [diagnose.py:206] - [diag-20260504222644-799d4c12] [Diagnose] 任务创建, 集群: prod-01
+2026-05-04 22:26:44,439 - dte_diagnostic_agent.api.routes.diagnose - INFO - [diagnose.py:142] - [diag-20260504222644-799d4c12] [Diagnose] 状态转换: PENDING -> RUNNING
+2026-05-04 22:26:44,442 - dte_diagnostic_agent.agent.core - INFO - [core.py:33] - Initializing DTEBaseDiagnosticAgent with model: glm-5, temperature: 0.1
+2026-05-04 22:26:44,652 - dte_diagnostic_agent.agent.core - INFO - [core.py:49] - [a5a11614-92cd-4aca-adf2-ad016dd1805e] [Agent] 诊断开始, 问题描述: login failed
+2026-05-04 22:26:44,652 - dte_diagnostic_agent.agent.intent_parser - INFO - [intent_parser.py:39] - [diag-20260504222644-0d553128] [IntentParser] LLM调用开始, prompt长度: 892
+2026-05-04 22:26:44,681 - openai._base_client - DEBUG - [_base_client.py:487] - Request options: {'method': 'post', 'url': '/chat/completions', 'headers': {'X-Stainless-Raw-Response': 'true'}, 'files': None, 'idempotency_key': 'stainless-python-retry-63ed63e9-1284-4f78-90a1-fecec20e7172', 'content': None, 'json_data': {'messages': [{'content': '你是一个专业的运维诊断助手，负责分析用户描述的问题并提取关键信息。\n\n用户输入：\n问题描述: login failed\n集群名称: prod-01\n服务: DTEBaseService\n优先级: medium\n\n请分析以上输入，提取以下信息并以JSON格式返回：\n\n1. problem_description: 问题现象的详细描述\n2. time_range: 问题发生的时间范围\n   - start: 开始时间 (格式: YYYY-MM-DD HH:MM:SS)\n   - end: 结束时间 (格式: YYYY-MM-DD HH:MM:SS)\n3. environment: 环境信息\n   - cluster_name: 集群名称\n   - node_info: 节点登录信息\n     - host: 节点IP或域名\n     - port: SSH端口\n     - username: 登录用户名\n     - auth_type: 认证类型 (password/ssh_key)\n   - service_name: 服务名称\n   - namespace: K8s命名空间\n4. symptoms: 问题症状列表 (关键词列表)\n5. priority: 优先级 (critical/high/medium/low)\n6. category: 问题类别，从以下选项中选择：\n   - service_unavailable: 服务不可用\n   - performance_degradation: 性能下降\n   - data_inconsistency: 数据不一致\n   - network_issue: 网络问题\n   - resource_exhaustion: 资源耗尽\n   - configuration_error: 配置错误\n   - unknown: 未知类型\n\n注意：\n- 如果用户未提供某些信息，请根据上下文合理推断\n- 时间信息要转换为标准格式\n- symptoms要提取关键症状关键词\n\n请直接返回JSON对象，不要包含其他解释文字。\n', 'role': 'user'}], 'model': 'glm-5', 'stream': False, 'temperature': 0.1}}
+2026-05-04 22:26:44,682 - openai._base_client - DEBUG - [_base_client.py:1626] - Sending HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
+2026-05-04 22:26:44,683 - httpcore.connection - DEBUG - [_trace.py:87] - connect_tcp.started host='127.0.0.1' port=7897 local_address=None timeout=None socket_options=None
+2026-05-04 22:26:44,684 - httpcore.connection - DEBUG - [_trace.py:87] - connect_tcp.complete return_value=<httpcore._backends.anyio.AnyIOStream object at 0x000001B5B19C5D90>
+2026-05-04 22:26:44,684 - httpcore.http11 - DEBUG - [_trace.py:87] - send_request_headers.started request=<Request [b'CONNECT']>
+2026-05-04 22:26:44,684 - httpcore.http11 - DEBUG - [_trace.py:87] - send_request_headers.complete
+2026-05-04 22:26:44,684 - httpcore.http11 - DEBUG - [_trace.py:87] - send_request_body.started request=<Request [b'CONNECT']>
+2026-05-04 22:26:44,684 - httpcore.http11 - DEBUG - [_trace.py:87] - send_request_body.complete
+2026-05-04 22:26:44,684 - httpcore.http11 - DEBUG - [_trace.py:87] - receive_response_headers.started request=<Request [b'CONNECT']>
+2026-05-04 22:26:44,685 - httpcore.http11 - DEBUG - [_trace.py:87] - receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'Connection established', [])
+2026-05-04 22:26:44,685 - httpcore.proxy - DEBUG - [_trace.py:87] - start_tls.started ssl_context=<ssl.SSLContext object at 0x000001B5B18B6450> server_hostname='dashscope.aliyuncs.com' timeout=None
+2026-05-04 22:26:44,741 - httpcore.proxy - DEBUG - [_trace.py:87] - start_tls.complete return_value=<httpcore._backends.anyio.AnyIOStream object at 0x000001B5B19C65D0>
+2026-05-04 22:26:44,741 - httpcore.http11 - DEBUG - [_trace.py:87] - send_request_headers.started request=<Request [b'POST']>
+2026-05-04 22:26:44,742 - httpcore.http11 - DEBUG - [_trace.py:87] - send_request_headers.complete
+2026-05-04 22:26:44,742 - httpcore.http11 - DEBUG - [_trace.py:87] - send_request_body.started request=<Request [b'POST']>
+2026-05-04 22:26:44,742 - httpcore.http11 - DEBUG - [_trace.py:87] - send_request_body.complete
+2026-05-04 22:26:44,742 - httpcore.http11 - DEBUG - [_trace.py:87] - receive_response_headers.started request=<Request [b'POST']>
+2026-05-04 22:27:46,717 - httpcore.http11 - DEBUG - [_trace.py:87] - receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'vary', b'Origin,Access-Control-Request-Method,Access-Control-Request-Headers, Accept-Encoding'), (b'x-request-id', b'17b9fe74-f9ba-9501-860a-b01f0686331c'), (b'x-dashscope-call-gateway', b'true'), (b'content-type', b'application/json'), (b'req-cost-time', b'61950'), (b'req-arrive-time', b'1777904805079'), (b'resp-start-time', b'1777904867030'), (b'x-envoy-upstream-service-time', b'61950'), (b'content-encoding', b'gzip'), (b'date', b'Mon, 04 May 2026 14:27:46 GMT'), (b'server', b'istio-envoy'), (b'transfer-encoding', b'chunked')])
+2026-05-04 22:27:46,717 - httpx - INFO - [_client.py:1740] - HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-04 22:27:46,717 - httpcore.http11 - DEBUG - [_trace.py:87] - receive_response_body.started request=<Request [b'POST']>
+2026-05-04 22:27:46,718 - httpcore.http11 - DEBUG - [_trace.py:87] - receive_response_body.complete
+2026-05-04 22:27:46,718 - httpcore.http11 - DEBUG - [_trace.py:87] - response_closed.started
+2026-05-04 22:27:46,718 - httpcore.http11 - DEBUG - [_trace.py:87] - response_closed.complete
+2026-05-04 22:27:46,718 - openai._base_client - DEBUG - [_base_client.py:1667] - HTTP Response: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "200 OK" Headers({'vary': 'Origin,Access-Control-Request-Method,Access-Control-Request-Headers, Accept-Encoding', 'x-request-id': '17b9fe74-f9ba-9501-860a-b01f0686331c', 'x-dashscope-call-gateway': 'true', 'content-type': 'application/json', 'req-cost-time': '61950', 'req-arrive-time': '1777904805079', 'resp-start-time': '1777904867030', 'x-envoy-upstream-service-time': '61950', 'content-encoding': 'gzip', 'date': 'Mon, 04 May 2026 14:27:46 GMT', 'server': 'istio-envoy', 'transfer-encoding': 'chunked'})
+2026-05-04 22:27:46,719 - openai._base_client - DEBUG - [_base_client.py:1675] - request_id: 17b9fe74-f9ba-9501-860a-b01f0686331c
+2026-05-04 22:27:46,723 - dte_diagnostic_agent.agent.intent_parser - INFO - [intent_parser.py:46] - [diag-20260504222644-0d553128] [IntentParser] LLM调用完成, 耗时: 62069.77ms, tokens: prompt=370, completion=2200, total=2570
+2026-05-04 22:27:46,723 - dte_diagnostic_agent.agent.intent_parser - DEBUG - [intent_parser.py:47] - [diag-20260504222644-0d553128] [IntentParser] LLM响应: ```json
+{
+  "problem_description": "login failed",
+  "time_range": {
+    "start": null,
+    "end": null
+  },
+  "environment": {
+    "cluster_name": "prod-01",
+    "node_info": {
+      "host": null,
+      "port": null,
+      "username": null,
+      "auth_type": null
+    },
+    "service_name": "DTEBaseService",
+    "namespace": null
+  },
+  "symptoms": [
+    "login failed"
+  ],
+  "priority": "medium",
+  "category": "configuration_error"
+}
+```...
+2026-05-04 22:27:46,724 - dte_diagnostic_agent.agent.core - INFO - [core.py:54] - [a5a11614-92cd-4aca-adf2-ad016dd1805e] [Agent] 意图解析完成, 类别: configuration_error
+2026-05-04 22:27:46,724 - dte_diagnostic_agent.agent.core - INFO - [core.py:85] - [a5a11614-92cd-4aca-adf2-ad016dd1805e] [Agent] 知识库查询开始, 关键词: login failed
+2026-05-04 22:27:46,724 - dte_diagnostic_agent.agent.core - INFO - [core.py:93] - [a5a11614-92cd-4aca-adf2-ad016dd1805e] [Agent] 知识库查询完成, 返回案例数: 0
+2026-05-04 22:27:46,725 - dte_diagnostic_agent.agent.planner - INFO - [planner.py:31] - [Planner] 生成诊断计划, 问题类别: configuration_error
+2026-05-04 22:27:46,725 - dte_diagnostic_agent.api.routes.diagnose - ERROR - [diagnose.py:176] - [diag-20260504222644-799d4c12] [Diagnose] 任务失败, 阶段: diagnose, 错误: '\n  "steps"'
+2026-05-04 22:27:46,725 - dte_diagnostic_agent.api.routes.diagnose - ERROR - [diagnose.py:177] - [diag-20260504222644-799d4c12] [Diagnose] 异常堆栈:
+Traceback (most recent call last):
+  File "D:\code\AIAgent\dtebaseagent\src\dte_diagnostic_agent\api\routes\diagnose.py", line 163, in _run_diagnostic_task
+    report = await agent.diagnose(user_input)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\code\AIAgent\dtebaseagent\src\dte_diagnostic_agent\agent\core.py", line 58, in diagnose
+    plan = await self.planner.generate_plan(context, similar_cases)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\code\AIAgent\dtebaseagent\src\dte_diagnostic_agent\agent\planner.py", line 35, in generate_plan
+    prompt = PLANNING_PROMPT.format(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+KeyError: '\n  "steps"'
+2026-05-04 22:31:26,826 - __main__ - INFO - [__main__.py:442] - DTE Diagnostic Agent v1.0.0
+2026-05-04 22:31:26,826 - __main__ - INFO - [__main__.py:443] - Configuration loaded from: config.yaml
+2026-05-04 22:31:26,826 - __main__ - INFO - [__main__.py:452] - Starting server on 0.0.0.0:8081
+2026-05-04 22:31:26,826 - __main__ - INFO - [__main__.py:453] - Workers: 1
+2026-05-04 22:31:26,826 - __main__ - INFO - [__main__.py:454] - Log level: INFO
+2026-05-04 22:31:26,864 - __main__ - INFO - [main.py:63] - Starting DTE Diagnostic Agent API v0.1.0
+2026-05-04 22:31:26,865 - __main__ - INFO - [main.py:66] - Server listening on 0.0.0.0:8081
+2026-05-04 22:31:26,865 - __main__ - INFO - [main.py:67] - API keys configured: Yes
+2026-05-04 22:31:26,865 - __main__ - INFO - [main.py:68] - Session storage directory: ./data/sessions
+2026-05-04 22:31:26,865 - __main__ - INFO - [main.py:69] - LLM base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2026-05-04 22:31:26,865 - __main__ - INFO - [main.py:70] - LLM model_name: glm-5
+2026-05-04 22:31:26,865 - __main__ - INFO - [main.py:71] - LLM temperature: 0.1
+2026-05-04 22:31:26,865 - __main__ - INFO - [main.py:73] - Knowledge base mode: local
+2026-05-04 22:31:45,629 - dte_diagnostic_agent.api.routes.diagnose - INFO - [diagnose.py:206] - [diag-20260504223145-9eb58684] [Diagnose] 任务创建, 集群: prod-01
+2026-05-04 22:31:45,630 - dte_diagnostic_agent.api.routes.diagnose - INFO - [diagnose.py:142] - [diag-20260504223145-9eb58684] [Diagnose] 状态转换: PENDING -> RUNNING
+2026-05-04 22:31:45,634 - dte_diagnostic_agent.agent.core - INFO - [core.py:33] - Initializing DTEBaseDiagnosticAgent with model: glm-5, temperature: 0.1
+2026-05-04 22:31:45,873 - dte_diagnostic_agent.agent.core - INFO - [core.py:49] - [a1548946-05ff-45f5-a8cb-e25dfd0494a9] [Agent] 诊断开始, 问题描述: login failed
+2026-05-04 22:31:45,873 - dte_diagnostic_agent.agent.intent_parser - INFO - [intent_parser.py:39] - [diag-20260504223145-1a2e2dd9] [IntentParser] LLM调用开始, prompt长度: 892
+2026-05-04 22:32:39,408 - httpx - INFO - [_client.py:1740] - HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-04 22:32:39,413 - dte_diagnostic_agent.agent.intent_parser - INFO - [intent_parser.py:46] - [diag-20260504223145-1a2e2dd9] [IntentParser] LLM调用完成, 耗时: 53539.38ms, tokens: prompt=370, completion=2075, total=2445
+2026-05-04 22:32:39,413 - dte_diagnostic_agent.agent.core - INFO - [core.py:54] - [a1548946-05ff-45f5-a8cb-e25dfd0494a9] [Agent] 意图解析完成, 类别: configuration_error
+2026-05-04 22:32:39,413 - dte_diagnostic_agent.agent.core - INFO - [core.py:85] - [a1548946-05ff-45f5-a8cb-e25dfd0494a9] [Agent] 知识库查询开始, 关键词: login failed
+2026-05-04 22:32:39,413 - dte_diagnostic_agent.agent.core - INFO - [core.py:93] - [a1548946-05ff-45f5-a8cb-e25dfd0494a9] [Agent] 知识库查询完成, 返回案例数: 0
+2026-05-04 22:32:39,413 - dte_diagnostic_agent.agent.planner - INFO - [planner.py:31] - [Planner] 生成诊断计划, 问题类别: configuration_error
+2026-05-04 22:33:40,350 - httpx - INFO - [_client.py:1740] - HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-04 22:33:40,351 - dte_diagnostic_agent.agent.planner - INFO - [planner.py:52] - [Planner] LLM调用完成, 耗时: 60937.43ms
+2026-05-04 22:33:40,351 - dte_diagnostic_agent.agent.planner - INFO - [planner.py:63] - [Planner] 生成步骤数: 6, 步骤: ['检查认证服务运行状态', '分析登录失败时段的应用日志', '核查认证服务配置文件', '检查数据库连接与状态', '网络连通性诊断', '系统资源监控检查']
+2026-05-04 22:33:40,351 - dte_diagnostic_agent.agent.core - INFO - [core.py:59] - [a1548946-05ff-45f5-a8cb-e25dfd0494a9] [Agent] 计划生成完成, 步骤数: 6
+2026-05-04 22:33:40,351 - dte_diagnostic_agent.agent.core - INFO - [core.py:98] - [a1548946-05ff-45f5-a8cb-e25dfd0494a9] [Agent] 执行步骤: 检查认证服务运行状态, 工具: k8s_operation
+2026-05-04 22:33:40,351 - dte_diagnostic_agent.agent.core - INFO - [core.py:121] - [a1548946-05ff-45f5-a8cb-e25dfd0494a9] [Agent] 执行步骤: 检查认证服务运行状态, 结果: result=executed
+2026-05-04 22:33:40,351 - dte_diagnostic_agent.agent.core - INFO - [core.py:98] - [a1548946-05ff-45f5-a8cb-e25dfd0494a9] [Agent] 执行步骤: 分析登录失败时段的应用日志, 工具: log_analysis
+2026-05-04 22:33:40,351 - dte_diagnostic_agent.agent.core - INFO - [core.py:121] - [a1548946-05ff-45f5-a8cb-e25dfd0494a9] [Agent] 执行步骤: 分析登录失败时段的应用日志, 结果: logs=0, anomalies=0
+2026-05-04 22:33:40,351 - dte_diagnostic_agent.agent.core - INFO - [core.py:98] - [a1548946-05ff-45f5-a8cb-e25dfd0494a9] [Agent] 执行步骤: 核查认证服务配置文件, 工具: config_check
+2026-05-04 22:33:40,351 - dte_diagnostic_agent.agent.core - INFO - [core.py:121] - [a1548946-05ff-45f5-a8cb-e25dfd0494a9] [Agent] 执行步骤: 核查认证服务配置文件, 结果: result=executed
+2026-05-04 22:33:40,351 - dte_diagnostic_agent.agent.core - INFO - [core.py:98] - [a1548946-05ff-45f5-a8cb-e25dfd0494a9] [Agent] 执行步骤: 检查数据库连接与状态, 工具: database_query
+2026-05-04 22:33:40,351 - dte_diagnostic_agent.agent.core - INFO - [core.py:121] - [a1548946-05ff-45f5-a8cb-e25dfd0494a9] [Agent] 执行步骤: 检查数据库连接与状态, 结果: connections=50, slow_queries=0
+2026-05-04 22:33:40,351 - dte_diagnostic_agent.agent.core - INFO - [core.py:98] - [a1548946-05ff-45f5-a8cb-e25dfd0494a9] [Agent] 执行步骤: 网络连通性诊断, 工具: network_diag
+2026-05-04 22:33:40,351 - dte_diagnostic_agent.agent.core - INFO - [core.py:121] - [a1548946-05ff-45f5-a8cb-e25dfd0494a9] [Agent] 执行步骤: 网络连通性诊断, 结果: result=executed
+2026-05-04 22:33:40,351 - dte_diagnostic_agent.agent.core - INFO - [core.py:98] - [a1548946-05ff-45f5-a8cb-e25dfd0494a9] [Agent] 执行步骤: 系统资源监控检查, 工具: resource_monitor
+2026-05-04 22:33:40,351 - dte_diagnostic_agent.agent.core - INFO - [core.py:121] - [a1548946-05ff-45f5-a8cb-e25dfd0494a9] [Agent] 执行步骤: 系统资源监控检查, 结果: cpu=50.0%, memory=60.0%, disk=70.0%
+2026-05-04 22:33:40,352 - dte_diagnostic_agent.agent.reasoning - INFO - [reasoning.py:99] - [Reasoning] 开始分析, 症状: ['login failed', 'authentication error']
+2026-05-04 22:33:40,352 - dte_diagnostic_agent.agent.reasoning - INFO - [reasoning.py:108] - [Reasoning] 规则匹配完成, 匹配规则数: 0, 规则: []
+2026-05-04 22:33:58,141 - dte_diagnostic_agent.api.routes.diagnose - INFO - [diagnose.py:250] - [diag-20260504223145-9eb58684] [Diagnose] 查询诊断结果
+2026-05-04 22:34:30,091 - dte_diagnostic_agent.api.routes.diagnose - INFO - [diagnose.py:250] - [diag-20260504223145-9eb58684] [Diagnose] 查询诊断结果
+2026-05-04 22:35:14,917 - httpx - INFO - [_client.py:1740] - HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-04 22:35:14,919 - dte_diagnostic_agent.agent.reasoning - INFO - [reasoning.py:140] - [Reasoning] LLM推理完成, 耗时: 94567.31ms, 生成假设数: 3
+2026-05-04 22:35:14,919 - dte_diagnostic_agent.agent.core - INFO - [core.py:66] - [a1548946-05ff-45f5-a8cb-e25dfd0494a9] [Agent] 推理完成, 假设数: 3
+2026-05-04 22:35:14,919 - dte_diagnostic_agent.api.routes.diagnose - ERROR - [diagnose.py:176] - [diag-20260504223145-9eb58684] [Diagnose] 任务失败, 阶段: diagnose, 错误: 'str' object has no attribute 'name'
+2026-05-04 22:35:14,919 - dte_diagnostic_agent.api.routes.diagnose - ERROR - [diagnose.py:177] - [diag-20260504223145-9eb58684] [Diagnose] 异常堆栈:
+Traceback (most recent call last):
+  File "D:\code\AIAgent\dtebaseagent\src\dte_diagnostic_agent\api\routes\diagnose.py", line 163, in _run_diagnostic_task
+    report = await agent.diagnose(user_input)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\code\AIAgent\dtebaseagent\src\dte_diagnostic_agent\agent\core.py", line 70, in diagnose
+    report = self._generate_report(context, validated, similar_cases)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\code\AIAgent\dtebaseagent\src\dte_diagnostic_agent\agent\core.py", line 170, in _generate_report
+    diagnostic_steps=[{"step": s.name, "result": "executed"} for s in context.collected_data.keys()],
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\code\AIAgent\dtebaseagent\src\dte_diagnostic_agent\agent\core.py", line 170, in <listcomp>
+    diagnostic_steps=[{"step": s.name, "result": "executed"} for s in context.collected_data.keys()],
+                               ^^^^^^
+AttributeError: 'str' object has no attribute 'name'
+2026-05-04 22:35:39,793 - __main__ - INFO - [main.py:77] - Shutting down DTE Diagnostic Agent API
+2026-05-04 22:35:39,793 - __main__ - INFO - [__main__.py:366] - Received SIGINT, initiating graceful shutdown...
+2026-05-04 22:35:43,021 - __main__ - INFO - [__main__.py:442] - DTE Diagnostic Agent v1.0.0
+2026-05-04 22:35:43,021 - __main__ - INFO - [__main__.py:443] - Configuration loaded from: config.yaml
+2026-05-04 22:35:43,021 - __main__ - INFO - [__main__.py:452] - Starting server on 0.0.0.0:8080
+2026-05-04 22:35:43,021 - __main__ - INFO - [__main__.py:453] - Workers: 1
+2026-05-04 22:35:43,021 - __main__ - INFO - [__main__.py:454] - Log level: DEBUG
+2026-05-04 22:35:43,021 - asyncio - DEBUG - [proactor_events.py:633] - Using proactor: IocpProactor
+2026-05-04 22:35:43,049 - __main__ - INFO - [main.py:63] - Starting DTE Diagnostic Agent API v0.1.0
+2026-05-04 22:35:43,050 - __main__ - INFO - [main.py:66] - Server listening on 0.0.0.0:8080
+2026-05-04 22:35:43,050 - __main__ - INFO - [main.py:67] - API keys configured: Yes
+2026-05-04 22:35:43,050 - __main__ - INFO - [main.py:68] - Session storage directory: ./data/sessions
+2026-05-04 22:35:43,050 - __main__ - INFO - [main.py:69] - LLM base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2026-05-04 22:35:43,050 - __main__ - INFO - [main.py:70] - LLM model_name: glm-5
+2026-05-04 22:35:43,050 - __main__ - INFO - [main.py:71] - LLM temperature: 0.1
+2026-05-04 22:35:43,050 - __main__ - INFO - [main.py:73] - Knowledge base mode: local
+2026-05-04 22:35:48,996 - dte_diagnostic_agent.api.routes.diagnose - INFO - [diagnose.py:206] - [diag-20260504223548-a22a2cf4] [Diagnose] 任务创建, 集群: prod-01
+2026-05-04 22:35:48,997 - dte_diagnostic_agent.api.routes.diagnose - INFO - [diagnose.py:142] - [diag-20260504223548-a22a2cf4] [Diagnose] 状态转换: PENDING -> RUNNING
+2026-05-04 22:35:49,000 - dte_diagnostic_agent.agent.core - INFO - [core.py:33] - Initializing DTEBaseDiagnosticAgent with model: glm-5, temperature: 0.1
+2026-05-04 22:35:49,184 - dte_diagnostic_agent.agent.core - INFO - [core.py:49] - [f8d6cda6-61f4-4dc7-894b-9224db91c02e] [Agent] 诊断开始, 问题描述: login failed
+2026-05-04 22:35:49,185 - dte_diagnostic_agent.agent.intent_parser - INFO - [intent_parser.py:39] - [diag-20260504223549-ed7c55c9] [IntentParser] LLM调用开始, prompt长度: 892
+2026-05-04 22:35:49,206 - openai._base_client - DEBUG - [_base_client.py:487] - Request options: {'method': 'post', 'url': '/chat/completions', 'headers': {'X-Stainless-Raw-Response': 'true'}, 'files': None, 'idempotency_key': 'stainless-python-retry-d9433e0a-2e22-47cc-9e90-209967d93c83', 'content': None, 'json_data': {'messages': [{'content': '你是一个专业的运维诊断助手，负责分析用户描述的问题并提取关键信息。\n\n用户输入：\n问题描述: login failed\n集群名称: prod-01\n服务: DTEBaseService\n优先级: medium\n\n请分析以上输入，提取以下信息并以JSON格式返回：\n\n1. problem_description: 问题现象的详细描述\n2. time_range: 问题发生的时间范围\n   - start: 开始时间 (格式: YYYY-MM-DD HH:MM:SS)\n   - end: 结束时间 (格式: YYYY-MM-DD HH:MM:SS)\n3. environment: 环境信息\n   - cluster_name: 集群名称\n   - node_info: 节点登录信息\n     - host: 节点IP或域名\n     - port: SSH端口\n     - username: 登录用户名\n     - auth_type: 认证类型 (password/ssh_key)\n   - service_name: 服务名称\n   - namespace: K8s命名空间\n4. symptoms: 问题症状列表 (关键词列表)\n5. priority: 优先级 (critical/high/medium/low)\n6. category: 问题类别，从以下选项中选择：\n   - service_unavailable: 服务不可用\n   - performance_degradation: 性能下降\n   - data_inconsistency: 数据不一致\n   - network_issue: 网络问题\n   - resource_exhaustion: 资源耗尽\n   - configuration_error: 配置错误\n   - unknown: 未知类型\n\n注意：\n- 如果用户未提供某些信息，请根据上下文合理推断\n- 时间信息要转换为标准格式\n- symptoms要提取关键症状关键词\n\n请直接返回JSON对象，不要包含其他解释文字。\n', 'role': 'user'}], 'model': 'glm-5', 'stream': False, 'temperature': 0.1}}
+2026-05-04 22:35:49,207 - openai._base_client - DEBUG - [_base_client.py:1626] - Sending HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
+2026-05-04 22:35:49,208 - httpcore.connection - DEBUG - [_trace.py:87] - connect_tcp.started host='127.0.0.1' port=7897 local_address=None timeout=None socket_options=None
+2026-05-04 22:35:49,209 - httpcore.connection - DEBUG - [_trace.py:87] - connect_tcp.complete return_value=<httpcore._backends.anyio.AnyIOStream object at 0x000002481D550210>
+2026-05-04 22:35:49,209 - httpcore.http11 - DEBUG - [_trace.py:87] - send_request_headers.started request=<Request [b'CONNECT']>
+2026-05-04 22:35:49,209 - httpcore.http11 - DEBUG - [_trace.py:87] - send_request_headers.complete
+2026-05-04 22:35:49,210 - httpcore.http11 - DEBUG - [_trace.py:87] - send_request_body.started request=<Request [b'CONNECT']>
+2026-05-04 22:35:49,210 - httpcore.http11 - DEBUG - [_trace.py:87] - send_request_body.complete
+2026-05-04 22:35:49,210 - httpcore.http11 - DEBUG - [_trace.py:87] - receive_response_headers.started request=<Request [b'CONNECT']>
+2026-05-04 22:35:49,210 - httpcore.http11 - DEBUG - [_trace.py:87] - receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'Connection established', [])
+2026-05-04 22:35:49,211 - httpcore.proxy - DEBUG - [_trace.py:87] - start_tls.started ssl_context=<ssl.SSLContext object at 0x000002481D412A80> server_hostname='dashscope.aliyuncs.com' timeout=None
+2026-05-04 22:35:49,277 - httpcore.proxy - DEBUG - [_trace.py:87] - start_tls.complete return_value=<httpcore._backends.anyio.AnyIOStream object at 0x000002481D550A10>
+2026-05-04 22:35:49,277 - httpcore.http11 - DEBUG - [_trace.py:87] - send_request_headers.started request=<Request [b'POST']>
+2026-05-04 22:35:49,277 - httpcore.http11 - DEBUG - [_trace.py:87] - send_request_headers.complete
+2026-05-04 22:35:49,277 - httpcore.http11 - DEBUG - [_trace.py:87] - send_request_body.started request=<Request [b'POST']>
+2026-05-04 22:35:49,277 - httpcore.http11 - DEBUG - [_trace.py:87] - send_request_body.complete
+2026-05-04 22:35:49,277 - httpcore.http11 - DEBUG - [_trace.py:87] - receive_response_headers.started request=<Request [b'POST']>
+2026-05-04 22:36:03,342 - __main__ - INFO - [__main__.py:366] - Received SIGINT, initiating graceful shutdown...
+2026-05-04 22:36:03,343 - __main__ - INFO - [__main__.py:366] - Received SIGINT, initiating graceful shutdown...
+2026-05-04 22:36:03,343 - httpcore.http11 - DEBUG - [_trace.py:87] - receive_response_headers.failed exception=CancelledError()
+2026-05-04 22:36:03,343 - httpcore.http11 - DEBUG - [_trace.py:87] - response_closed.started
+2026-05-04 22:36:03,344 - httpcore.http11 - DEBUG - [_trace.py:87] - response_closed.failed exception=CancelledError("Cancelled via cancel scope 2481bf60b50 by <Task cancelling name='Task-11' coro=<RequestResponseCycle.run_asgi() running at D:\\devtools\\python 3.11\\Lib\\site-packages\\uvicorn\\protocols\\http\\h11_impl.py:415> cb=[set.discard(), gather.<locals>._done_callback() at D:\\devtools\\python 3.11\\Lib\\asyncio\\tasks.py:754]>")
+2026-05-04 22:36:10,569 - __main__ - INFO - [__main__.py:442] - DTE Diagnostic Agent v1.0.0
+2026-05-04 22:36:10,569 - __main__ - INFO - [__main__.py:443] - Configuration loaded from: config.yaml
+2026-05-04 22:36:10,569 - __main__ - INFO - [__main__.py:452] - Starting server on 0.0.0.0:8080
+2026-05-04 22:36:10,569 - __main__ - INFO - [__main__.py:453] - Workers: 1
+2026-05-04 22:36:10,569 - __main__ - INFO - [__main__.py:454] - Log level: INFO
+2026-05-04 22:36:10,597 - __main__ - INFO - [main.py:63] - Starting DTE Diagnostic Agent API v0.1.0
+2026-05-04 22:36:10,598 - __main__ - INFO - [main.py:66] - Server listening on 0.0.0.0:8080
+2026-05-04 22:36:10,598 - __main__ - INFO - [main.py:67] - API keys configured: Yes
+2026-05-04 22:36:10,598 - __main__ - INFO - [main.py:68] - Session storage directory: ./data/sessions
+2026-05-04 22:36:10,598 - __main__ - INFO - [main.py:69] - LLM base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2026-05-04 22:36:10,598 - __main__ - INFO - [main.py:70] - LLM model_name: glm-5
+2026-05-04 22:36:10,598 - __main__ - INFO - [main.py:71] - LLM temperature: 0.1
+2026-05-04 22:36:10,598 - __main__ - INFO - [main.py:73] - Knowledge base mode: local
+2026-05-04 22:36:14,929 - dte_diagnostic_agent.api.routes.diagnose - INFO - [diagnose.py:206] - [diag-20260504223614-89fd6e48] [Diagnose] 任务创建, 集群: prod-01
+2026-05-04 22:36:14,930 - dte_diagnostic_agent.api.routes.diagnose - INFO - [diagnose.py:142] - [diag-20260504223614-89fd6e48] [Diagnose] 状态转换: PENDING -> RUNNING
+2026-05-04 22:36:14,933 - dte_diagnostic_agent.agent.core - INFO - [core.py:33] - Initializing DTEBaseDiagnosticAgent with model: glm-5, temperature: 0.1
+2026-05-04 22:36:15,114 - dte_diagnostic_agent.agent.core - INFO - [core.py:49] - [f32d25c5-9313-485d-91de-eee6b38a4e22] [Agent] 诊断开始, 问题描述: login failed
+2026-05-04 22:36:15,114 - dte_diagnostic_agent.agent.intent_parser - INFO - [intent_parser.py:39] - [diag-20260504223615-efefe4bf] [IntentParser] LLM调用开始, prompt长度: 892
+2026-05-04 22:37:30,118 - httpx - INFO - [_client.py:1740] - HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-04 22:37:30,123 - dte_diagnostic_agent.agent.intent_parser - INFO - [intent_parser.py:46] - [diag-20260504223615-efefe4bf] [IntentParser] LLM调用完成, 耗时: 75007.82ms, tokens: prompt=370, completion=2750, total=3120
+2026-05-04 22:37:30,123 - dte_diagnostic_agent.agent.core - INFO - [core.py:54] - [f32d25c5-9313-485d-91de-eee6b38a4e22] [Agent] 意图解析完成, 类别: service_unavailable
+2026-05-04 22:37:30,123 - dte_diagnostic_agent.agent.core - INFO - [core.py:85] - [f32d25c5-9313-485d-91de-eee6b38a4e22] [Agent] 知识库查询开始, 关键词: login failed
+2026-05-04 22:37:30,124 - dte_diagnostic_agent.agent.core - INFO - [core.py:93] - [f32d25c5-9313-485d-91de-eee6b38a4e22] [Agent] 知识库查询完成, 返回案例数: 0
+2026-05-04 22:37:30,124 - dte_diagnostic_agent.agent.planner - INFO - [planner.py:31] - [Planner] 生成诊断计划, 问题类别: service_unavailable
+2026-05-04 22:38:34,595 - httpx - INFO - [_client.py:1740] - HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-04 22:38:34,597 - dte_diagnostic_agent.agent.planner - INFO - [planner.py:52] - [Planner] LLM调用完成, 耗时: 64472.24ms
+2026-05-04 22:38:34,597 - dte_diagnostic_agent.agent.planner - INFO - [planner.py:63] - [Planner] 生成步骤数: 6, 步骤: ['检查登录服务Pod状态', '分析登录服务错误日志', '检查系统资源使用率', '检查数据库连接状态', '网络连通性测试', '检查服务配置文件']
+2026-05-04 22:38:34,597 - dte_diagnostic_agent.agent.core - INFO - [core.py:59] - [f32d25c5-9313-485d-91de-eee6b38a4e22] [Agent] 计划生成完成, 步骤数: 6
+2026-05-04 22:38:34,597 - dte_diagnostic_agent.agent.core - INFO - [core.py:98] - [f32d25c5-9313-485d-91de-eee6b38a4e22] [Agent] 执行步骤: 检查登录服务Pod状态, 工具: k8s_operation
+2026-05-04 22:38:34,597 - dte_diagnostic_agent.agent.core - INFO - [core.py:121] - [f32d25c5-9313-485d-91de-eee6b38a4e22] [Agent] 执行步骤: 检查登录服务Pod状态, 结果: result=executed
+2026-05-04 22:38:34,597 - dte_diagnostic_agent.agent.core - INFO - [core.py:98] - [f32d25c5-9313-485d-91de-eee6b38a4e22] [Agent] 执行步骤: 分析登录服务错误日志, 工具: log_analysis
+2026-05-04 22:38:34,597 - dte_diagnostic_agent.agent.core - INFO - [core.py:121] - [f32d25c5-9313-485d-91de-eee6b38a4e22] [Agent] 执行步骤: 分析登录服务错误日志, 结果: logs=0, anomalies=0
+2026-05-04 22:38:34,598 - dte_diagnostic_agent.agent.core - INFO - [core.py:98] - [f32d25c5-9313-485d-91de-eee6b38a4e22] [Agent] 执行步骤: 检查系统资源使用率, 工具: resource_monitor
+2026-05-04 22:38:34,598 - dte_diagnostic_agent.agent.core - INFO - [core.py:121] - [f32d25c5-9313-485d-91de-eee6b38a4e22] [Agent] 执行步骤: 检查系统资源使用率, 结果: cpu=50.0%, memory=60.0%, disk=70.0%
+2026-05-04 22:38:34,598 - dte_diagnostic_agent.agent.core - INFO - [core.py:98] - [f32d25c5-9313-485d-91de-eee6b38a4e22] [Agent] 执行步骤: 检查数据库连接状态, 工具: database_query
+2026-05-04 22:38:34,598 - dte_diagnostic_agent.agent.core - INFO - [core.py:121] - [f32d25c5-9313-485d-91de-eee6b38a4e22] [Agent] 执行步骤: 检查数据库连接状态, 结果: connections=50, slow_queries=0
+2026-05-04 22:38:34,598 - dte_diagnostic_agent.agent.core - INFO - [core.py:98] - [f32d25c5-9313-485d-91de-eee6b38a4e22] [Agent] 执行步骤: 网络连通性测试, 工具: network_diag
+2026-05-04 22:38:34,598 - dte_diagnostic_agent.agent.core - INFO - [core.py:121] - [f32d25c5-9313-485d-91de-eee6b38a4e22] [Agent] 执行步骤: 网络连通性测试, 结果: result=executed
+2026-05-04 22:38:34,598 - dte_diagnostic_agent.agent.core - INFO - [core.py:98] - [f32d25c5-9313-485d-91de-eee6b38a4e22] [Agent] 执行步骤: 检查服务配置文件, 工具: config_check
+2026-05-04 22:38:34,598 - dte_diagnostic_agent.agent.core - INFO - [core.py:121] - [f32d25c5-9313-485d-91de-eee6b38a4e22] [Agent] 执行步骤: 检查服务配置文件, 结果: result=executed
+2026-05-04 22:38:34,599 - dte_diagnostic_agent.agent.reasoning - INFO - [reasoning.py:99] - [Reasoning] 开始分析, 症状: ['login_failed']
+2026-05-04 22:38:34,599 - dte_diagnostic_agent.agent.reasoning - INFO - [reasoning.py:108] - [Reasoning] 规则匹配完成, 匹配规则数: 0, 规则: []
+2026-05-04 22:40:04,160 - httpx - INFO - [_client.py:1740] - HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-04 22:40:04,161 - dte_diagnostic_agent.agent.reasoning - INFO - [reasoning.py:140] - [Reasoning] LLM推理完成, 耗时: 89561.99ms, 生成假设数: 3
+2026-05-04 22:40:04,161 - dte_diagnostic_agent.agent.core - INFO - [core.py:66] - [f32d25c5-9313-485d-91de-eee6b38a4e22] [Agent] 推理完成, 假设数: 3
+2026-05-04 22:40:04,162 - dte_diagnostic_agent.api.routes.diagnose - ERROR - [diagnose.py:176] - [diag-20260504223614-89fd6e48] [Diagnose] 任务失败, 阶段: diagnose, 错误: 'str' object has no attribute 'name'
+2026-05-04 22:40:04,162 - dte_diagnostic_agent.api.routes.diagnose - ERROR - [diagnose.py:177] - [diag-20260504223614-89fd6e48] [Diagnose] 异常堆栈:
+Traceback (most recent call last):
+  File "D:\code\AIAgent\dtebaseagent\src\dte_diagnostic_agent\api\routes\diagnose.py", line 163, in _run_diagnostic_task
+    report = await agent.diagnose(user_input)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\code\AIAgent\dtebaseagent\src\dte_diagnostic_agent\agent\core.py", line 70, in diagnose
+    report = self._generate_report(context, validated, similar_cases)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\code\AIAgent\dtebaseagent\src\dte_diagnostic_agent\agent\core.py", line 170, in _generate_report
+    diagnostic_steps=[{"step": s.name, "result": "executed"} for s in context.collected_data.keys()],
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\code\AIAgent\dtebaseagent\src\dte_diagnostic_agent\agent\core.py", line 170, in <listcomp>
+    diagnostic_steps=[{"step": s.name, "result": "executed"} for s in context.collected_data.keys()],
+                               ^^^^^^
+AttributeError: 'str' object has no attribute 'name'
