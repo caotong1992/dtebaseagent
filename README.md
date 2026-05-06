@@ -29,15 +29,40 @@ cp .env.example .env
 
 **Windows:**
 ```batch
-bin\start.bat [port]
+bin\start.bat [port] [--restart|-r]
 ```
 
 **Linux:**
 ```bash
-./bin/start.sh [port]
+./bin/start.sh [port] [--restart|-r]
 ```
 
-默认端口: 8080
+| 参数 | 说明 |
+|------|------|
+| `port` | 服务端口，默认 8080 |
+| `--restart` 或 `-r` | 强制重启，停止现有进程后重新启动 |
+
+**示例:**
+```batch
+# Normal start (skip if same process running)
+bin\start.bat
+
+# Start on custom port
+bin\start.bat 9090
+
+# Force restart
+bin\start.bat --restart
+bin\start.bat -r
+
+# Force restart on custom port
+bin\start.bat 9090 --restart
+```
+
+**启动特性:**
+- 检测 PID 文件，判断是否为同一进程
+- 同一进程运行时跳过重启（节省资源）
+- 不同进程占用端口时自动停止旧进程
+- 启动后自动保存 PID 到 `bin/dte-diag.pid`
 
 ### 停止服务
 
@@ -50,6 +75,20 @@ bin\stop.bat [port]
 ```bash
 ./bin/stop.sh [port]
 ```
+
+**示例:**
+```batch
+# Stop service on default port
+bin\stop.bat
+
+# Stop service on custom port
+bin\stop.bat 9090
+```
+
+**停止特性:**
+- 通过端口查找进程 PID
+- 强制停止进程 (`taskkill /F` 或 `kill`)
+- 自动清理 PID 文件
 
 ### 访问 API
 
