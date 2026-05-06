@@ -14,7 +14,8 @@ class KnowledgeBaseInterface(ABC):
         query: str,
         symptoms: list[str] | None = None,
         category: str | None = None,
-        top_k: int = 10
+        top_k: int = 10,
+        keywords: list[str] | None = None
     ) -> list[SearchResult]:
         """Search for relevant cases.
         
@@ -23,6 +24,7 @@ class KnowledgeBaseInterface(ABC):
             symptoms: Optional symptom filter list
             category: Optional category filter
             top_k: Maximum number of results
+            keywords: Optional list of keywords for multi-keyword search
             
         Returns:
             List of SearchResult objects

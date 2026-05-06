@@ -63,3 +63,9 @@ knowledge_base:
     api_key: null
     timeout: 30
     headers: {}
+  
+  # 查询处理器配置
+  query_processor:
+    enabled: true
+    use_llm_translation: true
+    cache_size: 100

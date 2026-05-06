@@ -3,6 +3,14 @@
 from pydantic import BaseModel, Field
 
 
+class QueryProcessorConfig(BaseModel):
+    """Query processor configuration."""
+    
+    enabled: bool = Field(default=True, description="Enable query processor")
+    use_llm_translation: bool = Field(default=True, description="Use LLM for query translation")
+    cache_size: int = Field(default=100, ge=0, description="Cache size for processed queries")
+
+
 class LocalKBConfig(BaseModel):
     """Local markdown knowledge base configuration."""
     
@@ -27,6 +35,7 @@ class KnowledgeBaseConfig(BaseModel):
     mode: str = Field(default="local", description="Knowledge base mode: local/remote")
     local: LocalKBConfig = Field(default_factory=LocalKBConfig, description="Local KB config")
     remote: RemoteKBConfig | None = Field(default=None, description="Remote KB config")
+    query_processor: QueryProcessorConfig | None = Field(default=None, description="Query processor config")
     
     def validate_config(self) -> None:
         """Validate configuration based on mode."""

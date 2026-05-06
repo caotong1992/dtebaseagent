@@ -15,6 +15,9 @@ from dte_diagnostic_agent.agent.models.hypothesis import ValidatedHypothesis
 from dte_diagnostic_agent.agent.models.report import DiagnosticReport, Solution
 from dte_diagnostic_agent.kb.models import Case
 from dte_diagnostic_agent.kb.manager import KnowledgeBaseManager
+from dte_diagnostic_agent.kb.query_processor import QueryProcessor
+from dte_diagnostic_agent.kb.translator import TranslatorService
+from dte_diagnostic_agent.kb.config import QueryProcessorConfig
 import logging
 
 
@@ -27,7 +30,8 @@ class DTEBaseDiagnosticAgent:
         base_url: str | None = None,
         model_name: str = "gpt-4o",
         temperature: float = 0.1,
-        kb_manager: KnowledgeBaseManager | None = None
+        kb_manager: KnowledgeBaseManager | None = None,
+        query_processor_config: QueryProcessorConfig | None = None
     ):
         self.logger = logging.getLogger(__name__)
         self.logger.info(f"Initializing DTEBaseDiagnosticAgent with model: {model_name}, temperature: {temperature}")
@@ -42,6 +46,20 @@ class DTEBaseDiagnosticAgent:
         self.planner = DiagnosticPlanner(llm=self.llm)
         self.reasoning_engine = ReasoningEngine(llm=self.llm)
         self.kb_manager = kb_manager
+        
+        if query_processor_config and query_processor_config.enabled:
+            translator = TranslatorService(
+                llm=self.llm,
+                cache_size=query_processor_config.cache_size
+            )
+            self.query_processor = QueryProcessor(
+                translator=translator,
+                config=query_processor_config
+            )
+            self.logger.info(f"QueryProcessor initialized, enabled={query_processor_config.enabled}, use_llm_translation={query_processor_config.use_llm_translation}")
+        else:
+            self.query_processor = None
+            self.logger.info("QueryProcessor disabled or not configured")
     
     async def diagnose(self, user_input: UserInput) -> DiagnosticReport:
         session_id = str(uuid.uuid4())
@@ -81,11 +99,22 @@ class DTEBaseDiagnosticAgent:
             self.logger.info(f"[{session_id}] [Agent] 知识库查询跳过, 未配置知识库管理器")
             return []
         
-        query_keywords = context.problem_description[:50] if context.problem_description else ""
-        self.logger.info(f"[{session_id}] [Agent] 知识库查询开始, 关键词: {query_keywords}")
+        query = context.problem_description
+        keywords = None
+        
+        if self.query_processor and query:
+            self.logger.info(f"[{session_id}] [QueryProcessor] 开始查询预处理, 原始查询: {query[:100] if query else ''}")
+            preprocessed = await self.query_processor.process(query)
+            keywords = preprocessed.all_keywords
+            self.logger.info(f"[{session_id}] [QueryProcessor] 预处理完成, 中文关键词: {preprocessed.chinese_keywords}")
+            self.logger.info(f"[{session_id}] [QueryProcessor] 预处理完成, 英文关键词: {preprocessed.english_keywords}")
+            self.logger.info(f"[{session_id}] [QueryProcessor] 预处理完成, 合并关键词: {keywords}")
+        
+        self.logger.info(f"[{session_id}] [Agent] 知识库查询开始, 关键词: {keywords[:5] if keywords else query[:50] if query else ''}")
         
         results = await self.kb_manager.search(
-            query=context.problem_description,
+            query=query,
+            keywords=keywords,
             symptoms=context.symptoms,
             top_k=5
         )

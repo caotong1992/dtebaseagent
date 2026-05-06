@@ -158,43 +158,58 @@ class LocalMarkdownKB(KnowledgeBaseInterface):
         query: str,
         symptoms: list[str] | None = None,
         category: str | None = None,
-        top_k: int = 10
+        top_k: int = 10,
+        keywords: list[str] | None = None
     ) -> list[SearchResult]:
-        """Keyword search for cases."""
-        results = []
-        query_lower = query.lower()
+        """Keyword search for cases with multi-keyword support."""
+        search_terms = keywords if keywords else [query]
+        case_scores: dict[str, float] = {}
+        case_reasons: dict[str, list[str]] = {}
         
-        for case in self.index.values():
-            if category and case.category != category:
-                continue
+        for term in search_terms:
+            term_lower = term.lower()
             
-            score = 0
-            match_reasons = []
-            
-            if query_lower in case.title.lower():
-                score += 10
-                match_reasons.append("标题匹配")
-            
-            if query_lower in case.problem.lower():
-                score += 5
-                match_reasons.append("问题描述匹配")
-            
-            for symptom in (symptoms or []):
-                if symptom.lower() in [s.lower() for s in case.symptoms]:
-                    score += 3
-                    match_reasons.append(f"症状匹配: {symptom}")
-            
-            for tag in case.tags:
-                if query_lower in tag.lower():
-                    score += 2
-                    match_reasons.append(f"标签匹配: {tag}")
-            
-            if score > 0:
-                results.append(SearchResult(
-                    case=case,
-                    similarity=min(score / 20, 1.0),
-                    match_reason="; ".join(match_reasons)
-                ))
+            for case in self.index.values():
+                if category and case.category != category:
+                    continue
+                
+                score = 0
+                match_reasons = []
+                
+                if term_lower in case.title.lower():
+                    score += 10
+                    match_reasons.append(f"标题匹配: {term}")
+                
+                if term_lower in case.problem.lower():
+                    score += 5
+                    match_reasons.append(f"问题描述匹配: {term}")
+                
+                for symptom in (symptoms or []):
+                    if symptom.lower() in [s.lower() for s in case.symptoms]:
+                        score += 3
+                        match_reasons.append(f"症状匹配: {symptom}")
+                
+                for tag in case.tags:
+                    if term_lower in tag.lower():
+                        score += 2
+                        match_reasons.append(f"标签匹配: {tag}")
+                
+                if score > 0:
+                    if case.case_id not in case_scores:
+                        case_scores[case.case_id] = 0
+                        case_reasons[case.case_id] = []
+                    case_scores[case.case_id] += score
+                    case_reasons[case.case_id].extend(match_reasons)
+        
+        results = []
+        for case_id, total_score in case_scores.items():
+            case = self.index[case_id]
+            unique_reasons = list(dict.fromkeys(case_reasons[case_id]))
+            results.append(SearchResult(
+                case=case,
+                similarity=min(total_score / 20, 1.0),
+                match_reason="; ".join(unique_reasons)
+            ))
         
         results.sort(key=lambda r: r.similarity, reverse=True)
         return results[:top_k]

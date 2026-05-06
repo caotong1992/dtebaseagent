@@ -33,7 +33,8 @@ class RemoteKBClient(KnowledgeBaseInterface):
         query: str,
         symptoms: list[str] | None = None,
         category: str | None = None,
-        top_k: int = 10
+        top_k: int = 10,
+        keywords: list[str] | None = None
     ) -> list[SearchResult]:
         """Search via remote API."""
         try:
@@ -43,7 +44,8 @@ class RemoteKBClient(KnowledgeBaseInterface):
                     "query": query,
                     "symptoms": symptoms,
                     "category": category,
-                    "top_k": top_k
+                    "top_k": top_k,
+                    "keywords": keywords
                 }
             )
             response.raise_for_status()

@@ -8,17 +8,124 @@ DTEBaseService问题定位AI Agent，用于智能诊断DTEBaseService服务问�
 
 ---
 
+## 项目目录结构
+
+```
+d:\code\dtebaseagent/
+├── .env.example              # 环境变量示例
+├── .gitignore                # Git 忽略配置
+├── README.md                 # 项目说明文档
+├── AGENTS.md                 # 源码总结文档
+├── config.yaml               # 主配置文件
+├── config.yaml.example       # 配置文件示例
+├── design.md                 # 设计文档
+├── requirements.txt          # Python 依赖
+│
+├── bin/                      # 启动停止脚本
+│   ├── start.bat             # Windows 启动脚本
+│   ├── start.sh              # Linux 启动脚本
+│   ├── stop.bat              # Windows 停止脚本
+│   └── stop.sh               # Linux 停止脚本
+│
+├── cases/                    # 案例库目录
+│   ├── collector_task/       # Collector 任务案例
+│   │   └── CASE-020-collector_task_failed.md
+│   ├── database/             # 数据库案例
+│   │   ├── CASE-001-db-connection-timeout.md
+│   │   └── CASE-002-db-slow-query.md
+│   └── network/              # 网络案例
+│   │   └── CASE-010-network-timeout.md
+│
+├── deployment/               # 部署配置
+│   └── README.md
+│
+├── docs/                     # 文档目录
+│   ├── api.md                # API 文档
+│   └── cli.md                # CLI 文档
+│
+├── src/                      # 源代码
+│   └── dte_diagnostic_agent/
+│
+└── test/                     # 测试脚本
+│   └── call_api.py
+```
+
+---
+
 ## 模块结构
 
 ```
 src/dte_diagnostic_agent/
 ├── agent/          # Agent核心模块
+│   ├── core.py     # 诊断流程主类
+│   ├── intent_parser.py  # 意图解析
+│   ├── planner.py  # 诊断规划
+│   ├── reasoning.py  # 推理分析
+│   └── models/     # 数据模型
+│       ├── context.py     # 诊断上下文
+│       ├── hypothesis.py  # 问题假设
+│       ├── input.py       # 用户输入
+│       ├── plan.py        # 诊断计划
+│       └── report.py      # 诊断报告
+│
 ├── api/            # RESTful API接口
+│   ├── main.py     # FastAPI 应用
+│   ├── middleware/ # 中间件
+│   │   └ auth.py   # API Key认证
+│   ├── routes/     # 路由模块
+│   │   ├── cases.py    # 案例路由
+│   │   └ diagnose.py  # 诊断路由
+│   └── schemas/    # 数据模型
+│       ├── cases.py    # 案例模型
+│       ├── clusters.py # 集群模型
+│       ├── common.py   # 通用模型
+│       └ diagnose.py  # 诊断模型
+│
 ├── cli/            # 命令行工具
+│   ├── main.py     # CLI 入口
+│   ├── client.py   # HTTP API客户端
+│   ├── config.py   # 配置管理
+│   ├── output.py   # 输出格式化
+│   └ commands/     # 命令实现
+│       ├── cancel.py   # 取消诊断
+│       ├── case.py     # 案例管理
+│       ├── cluster.py  # 集群管理
+│       ├── config_cmd.py  # 配置管理
+│       ├── diagnose.py  # 执行诊断
+│       ├── history.py   # 历史记录
+│       ├── search.py    # 搜索案例
+│       ├── status.py    # 状态查询
+│
 ├── kb/             # 知识库管理
+│   ├── config.py   # 配置模型
+│   ├── interface.py  # 接口抽象
+│   ├── keyword_extractor.py  # 关键词提取
+│   ├── local_kb.py  # 本地Markdown适配器
+│   ├── manager.py   # 知识库管理器
+│   ├── models.py    # 数据模型
+│   ├── query_processor.py  # 查询预处理器
+│   ├── remote_kb.py # 远程API适配器
+│   └ translator.py  # 翻译服务
+│
 ├── prompts/        # Prompt模板
+│   ├── intent.py   # 意图理解
+│   ├── planning.py # 诊断规划
+│   └ reasoning.py  # 推理分析
+│
 ├── storage/        # 数据存储
+│   ├── models.py   # 数据模型
+│   └ session_store.py  # 会话存储
+│
 ├── tools/          # 诊断工具集
+│   ├── case.py     # 案例检索工具
+│   ├── config.py   # 配置检查工具
+│   ├── database.py # 数据库查询工具
+│   ├── k8s.py      # K8s操作工具
+│   ├── log.py      # 日志分析工具
+│   ├── network.py  # 网络诊断工具
+│   ├── resource.py # 指标采集工具
+│   ├── ssh.py      # SSH连接工具
+│
 ├── __init__.py     # 包入口
 └── __main__.py     # 启动入口
 ```
@@ -33,13 +140,13 @@ src/dte_diagnostic_agent/
 
 ```python
 class DTEBaseDiagnosticAgent:
-    def __init__(api_key, base_url, model_name, temperature, kb_manager)
+    def __init__(api_key, base_url, model_name, temperature, kb_manager, query_processor_config)
     async def diagnose(user_input) -> DiagnosticReport
 ```
 
 **诊断流程**:
 1. 意图解析 → IntentParser
-2. 案例检索 → KnowledgeBaseManager
+2. 案例检索 → KnowledgeBaseManager（支持查询预处理）
 3. 规划生成 → DiagnosticPlanner
 4. 工具执行 → 模拟执行诊断步骤
 5. 推理分析 → ReasoningEngine
@@ -131,8 +238,6 @@ def create_app(api_keys, session_dir) -> FastAPI
 |------|------|------|
 | diagnose.py | diagnose_router | POST/GET/DELETE /diagnose, GET /diagnose/list |
 | cases.py | cases_router | GET /cases/search, POST /cases, GET /cases/{id} |
-| clusters.py | clusters_router | GET /clusters, GET /clusters/{name}/status |
-| health.py | health_router | GET /health, GET /ready, GET /config |
 
 ### 2.3 数据模型 (schemas/)
 
@@ -142,6 +247,12 @@ def create_app(api_keys, session_dir) -> FastAPI
 | cases.py | CaseSearchRequest, CaseResponse | 案例请求/响应 |
 | clusters.py | ClusterInfo, ClusterStatus | 集群信息 |
 | common.py | PaginationInfo, ErrorResponse | 通用模型 |
+
+### 2.4 中间件 (middleware/)
+
+| 模块 | 文件 | 功能 |
+|------|------|------|
+| auth.py | AuthMiddleware | API Key认证中间件 |
 
 ---
 
@@ -194,7 +305,7 @@ def main() -> None
 ```python
 class KnowledgeBaseManager:
     def __init__(config: KnowledgeBaseConfig)
-    async def search(query, symptoms, category, top_k) -> list[SearchResult]
+    async def search(query, keywords, symptoms, category, top_k) -> list[SearchResult]
     async def get(case_id) -> Case
     async def save(case) -> str
     async def list_all(category, limit) -> list[Case]
@@ -227,7 +338,7 @@ class LocalMarkdownKB(KnowledgeBaseInterface):
 
 **功能**:
 - 解析Markdown文件（frontmatter + 章节）
-- 关键词搜索匹配
+- 多关键词搜索匹配（支持中英文双语）
 - 案例保存为Markdown文件
 
 **Markdown格式**:
@@ -262,6 +373,34 @@ class KnowledgeBaseConfig(BaseModel):
     mode: str  # local/remote
     local: LocalKBConfig
     remote: RemoteKBConfig
+    query_processor: QueryProcessorConfig | None
+```
+
+### 4.6 查询预处理模块
+
+**KeywordExtractor** (keyword_extractor.py)
+- 提取中文词组、英文单词、专业术语
+- 识别 PascalCase 格式的技术术语
+
+**TranslatorService** (translator.py)
+- 使用 LLM 进行中英文双向翻译
+- 内置缓存机制避免重复调用
+
+**QueryProcessor** (query_processor.py)
+- 整合关键词提取和翻译
+- 输出双语关键词列表（chinese_keywords, english_keywords, all_keywords）
+- 专业术语保留原值不翻译
+
+```python
+class QueryProcessor:
+    async def process(query: str) -> PreprocessedQuery
+
+@dataclass
+class PreprocessedQuery:
+    original: str
+    chinese_keywords: list[str]
+    english_keywords: list[str]
+    all_keywords: list[str]
 ```
 
 ---
@@ -353,7 +492,44 @@ python -m dte_diagnostic_agent --config config.yaml --port 8080
 
 ---
 
-## 9. 完整诊断流程
+## 9. 启动脚本 (bin/)
+
+### 9.1 Windows脚本
+
+**start.bat** - 启动服务
+- 用法: start.bat [port]
+- 默认端口: 8080
+- 功能: 自动检测并重启已有进程
+
+**stop.bat** - 停止服务
+- 用法: stop.bat [port]
+- 功能: 通过端口查找并停止进程
+
+### 9.2 Linux脚本
+
+**start.sh** - 启动服务
+- 用法: ./start.sh [port]
+- 默认端口: 8080
+- PID文件: bin/dte-diag.pid
+- 日志输出: logs/agent.log
+
+**stop.sh** - 停止服务
+- 用法: ./stop.sh [port]
+- 功能: 通过PID文件或端口停止进程
+
+---
+
+## 10. 案例库目录 (cases/)
+
+| 目录 | 案例 |
+|------|------|
+| database/ | CASE-001 数据库连接超时, CASE-002 数据库慢查询 |
+| network/ | CASE-010 网络超时 |
+| collector_task/ | CASE-020 Collector任务失败 |
+
+---
+
+## 11. 完整诊断流程
 
 ```
 用户输入 (UserInput)
@@ -365,8 +541,11 @@ IntentParser.parse()
 DiagnosticContext
     │
     ▼
+QueryProcessor.process()
+    │ 关键词提取 + 中英文翻译
+    ▼
 KnowledgeBaseManager.search()
-    │ 检索相似历史案例
+    │ 多语言关键词检索相似案例
     ▼
 DiagnosticPlanner.generate_plan()
     │ 生成诊断步骤
@@ -391,7 +570,7 @@ DiagnosticReport
 
 ---
 
-## 10. 关键设计决策
+## 12. 关键设计决策
 
 1. **双模式知识库**: 本地Markdown + 远程API，配置切换
 2. **按月存储**: CSV文件按自然月分片存储诊断记录
@@ -399,3 +578,5 @@ DiagnosticReport
 4. **LangChain工具**: StructuredTool标准化工具定义
 5. **CLI+API双接口**: 命令行和RESTful API两种使用方式
 6. **优雅关闭**: systemd服务支持SIGTERM信号处理
+7. **查询预处理**: 关键词提取 + 中英文双向翻译，提高知识库检索可靠性
+8. **启动脚本**: bin 目录提供 Windows/Linux 启动停止脚本

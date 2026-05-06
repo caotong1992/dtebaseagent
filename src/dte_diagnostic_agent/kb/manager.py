@@ -28,10 +28,11 @@ class KnowledgeBaseManager:
         query: str,
         symptoms: list[str] | None = None,
         category: str | None = None,
-        top_k: int = 10
+        top_k: int = 10,
+        keywords: list[str] | None = None
     ) -> list[SearchResult]:
         """Search for relevant cases."""
-        return await self.backend.search(query, symptoms, category, top_k)
+        return await self.backend.search(query, symptoms, category, top_k, keywords)
     
     async def get(self, case_id: str) -> Case | None:
         """Get a specific case."""
