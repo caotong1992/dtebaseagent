@@ -1,24 +1,27 @@
----
-case_id: CASE-021
-title: 采集任务失败,last_error_code为:csm.loading.error
-category: collector_task
+***
+
+case\_id: CASE-021
+title: 采集任务失败,last\_error\_code为:csm.loading.error
+category: collector\_task
 severity: medium
-created_at: 2024-02-10T09:00:00
-updated_at: 2024-02-10T10:30:00
+created\_at: 2024-02-10T09:00:00
+updated\_at: 2024-02-10T10:30:00
 tags:
-  - collector task
-  - csm.loading.error
----
+
+- collector task
+- csm.loading.error
+
+***
 
 ## 问题现象
 
-采集任务失败,last_error_code为:csm.loading.error
+采集任务失败,last\_error\_code为:csm.loading.error
 
 ## 症状列表
 
 - 采集任务失败
 - 数据不一致
-- 采集任务管理表，last_error_code为:csm.loading.error
+- 采集任务管理表，last\_error\_code为:csm.loading.error
 
 ## 分析过程
 
@@ -36,3 +39,4 @@ tags:
 ## 解决方案
 
 1. 根据错误原因整改
+

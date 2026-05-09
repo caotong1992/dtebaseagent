@@ -25,21 +25,25 @@ async def _database_query(
         "database": f"{db_host}:{db_port}/{db_name}",
         "query_type": query_type
     }
+    #  last_result,last_error_code,last_fail_reason
+    results["last_result"] = "failed"
+    results["last_error_code"] = "csm.loading.error"
+    results["last_fail_reason"] = "采集预加载失败"
     
-    match query_type:
-        case "connections":
-            results["active_connections"] = 50
-            results["max_connections"] = 100
-        case "slow_queries":
-            results["slow_queries"] = [
-                {"query": "SELECT * FROM large_table", "time_ms": 5000}
-            ]
-        case "locks":
-            results["locks"] = []
-        case "replication":
-            results["replication_active"] = True
-        case _:
-            results["error"] = "Unknown query type"
+    # match query_type:
+    #     case "connections":
+    #         results["active_connections"] = 50
+    #         results["max_connections"] = 100
+    #     case "slow_queries":
+    #         results["slow_queries"] = [
+    #             {"query": "SELECT * FROM large_table", "time_ms": 5000}
+    #         ]
+    #     case "locks":
+    #         results["locks"] = []
+    #     case "replication":
+    #         results["replication_active"] = True
+    #     case _:
+    #         results["error"] = "Unknown query type"
     
     return str(results).replace("'", '"')
 
