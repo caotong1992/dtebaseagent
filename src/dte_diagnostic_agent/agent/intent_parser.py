@@ -34,8 +34,8 @@ class IntentParser:
         session_id = f"diag-{datetime.now().strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:8]}"
         
         input_text = self._format_input(user_input)
-        
         prompt = INTENT_PROMPT.format(user_input=input_text)
+        logger.info(f"[{session_id}] [IntentParser] LLM调用开始, prompt: {prompt}")
         logger.info(f"[{session_id}] [IntentParser] LLM调用开始, prompt长度: {len(prompt)}")
         
         start_time = time.time()
@@ -44,7 +44,7 @@ class IntentParser:
         
         token_info = self._extract_token_info(response)
         logger.info(f"[{session_id}] [IntentParser] LLM调用完成, 耗时: {elapsed_ms:.2f}ms, tokens: {token_info}")
-        logger.debug(f"[{session_id}] [IntentParser] LLM响应: {response.content[:500]}...")
+        logger.info(f"[{session_id}] [IntentParser] LLM响应: {response.content[:500]}...")
         
         parsed_data = self._parse_response(response.content)
         

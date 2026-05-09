@@ -51,6 +51,29 @@ class ReasoningEngine:
         self.llm = llm
         self.rules: list[DiagnosticRule] = self._load_rules()
     
+    def _extract_token_info(self, response) -> str:
+        """Extract token usage information from LLM response."""
+        try:
+            metadata = getattr(response, 'response_metadata', {}) or {}
+            token_usage = metadata.get('token_usage', {})
+            
+            if token_usage:
+                prompt_tokens = token_usage.get('prompt_tokens', 0)
+                completion_tokens = token_usage.get('completion_tokens', 0)
+                total_tokens = token_usage.get('total_tokens', 0)
+                return f"prompt={prompt_tokens}, completion={completion_tokens}, total={total_tokens}"
+            
+            usage = metadata.get('usage', {})
+            if usage:
+                prompt_tokens = usage.get('prompt_tokens', 0)
+                completion_tokens = usage.get('completion_tokens', 0)
+                total_tokens = usage.get('total_tokens', 0)
+                return f"prompt={prompt_tokens}, completion={completion_tokens}, total={total_tokens}"
+            
+            return "N/A"
+        except Exception:
+            return "N/A"
+    
     def _load_rules(self) -> list[DiagnosticRule]:
         return [
             DiagnosticRule(
@@ -96,7 +119,8 @@ class ReasoningEngine:
     
     async def analyze(self, context: DiagnosticContext) -> list[Hypothesis]:
         """Analyze context and generate hypotheses."""
-        logger.info(f"[Reasoning] 开始分析, 症状: {context.symptoms}")
+        session_id = context.session_id
+        logger.info(f"[{session_id}] [Reasoning] 开始分析, 症状: {context.symptoms}")
         
         hypotheses = []
         
@@ -105,14 +129,18 @@ class ReasoningEngine:
                 hypotheses.append(rule.hypothesis)
         
         matched_rules = [rule.name for rule in self.rules if rule.match(context)]
-        logger.info(f"[Reasoning] 规则匹配完成, 匹配规则数: {len(matched_rules)}, 规则: {matched_rules}")
+        logger.info(f"[{session_id}] [Reasoning] 规则匹配完成, 匹配规则数: {len(matched_rules)}, 规则: {matched_rules}")
         
         llm_hypotheses = await self._llm_reasoning(context)
         hypotheses.extend(llm_hypotheses)
         
-        return self._rank_hypotheses(hypotheses)
+        ranked = self._rank_hypotheses(hypotheses)
+        logger.info(f"[{session_id}] [Reasoning] 分析完成, 总假设数: {len(ranked)}, 排序后置信度: {[h.confidence for h in ranked[:3]]}")
+        
+        return ranked
     
     async def _llm_reasoning(self, context: DiagnosticContext) -> list[Hypothesis]:
+        session_id = context.session_id
         evidence_text = self._format_evidence(context.collected_data)
         
         prompt = REASONING_PROMPT.format(
@@ -120,9 +148,18 @@ class ReasoningEngine:
             collected_evidence=evidence_text
         )
         
-        start_time = time.time()
+        prompt_preview = prompt[:500] + "..." if len(prompt) > 500 else prompt
+        logger.info(f"[{session_id}] [Reasoning] LLM调用开始, prompt长度: {len(prompt)}")
+        logger.info(f"[{session_id}] [Reasoning] LLM调用输入(prompt前500字符): {prompt_preview}")
+        
+        start_time = time.perf_counter()
         response = await self.llm.ainvoke(prompt)
-        elapsed_ms = (time.time() - start_time) * 1000
+        elapsed_ms = (time.perf_counter() - start_time) * 1000
+        
+        token_info = self._extract_token_info(response)
+        response_preview = response.content[:500] + "..." if len(response.content) > 500 else response.content
+        logger.info(f"[{session_id}] [Reasoning] LLM调用完成, 耗时: {elapsed_ms:.2f}ms, tokens: {token_info}")
+        logger.info(f"[{session_id}] [Reasoning] LLM响应: {response_preview}")
         
         parsed_data = self._parse_response(response.content)
         
@@ -137,7 +174,7 @@ class ReasoningEngine:
                 source=h_data.get("source", "llm")
             ))
         
-        logger.info(f"[Reasoning] LLM推理完成, 耗时: {elapsed_ms:.2f}ms, 生成假设数: {len(hypotheses)}")
+        logger.info(f"[{session_id}] [Reasoning] LLM推理生成假设数: {len(hypotheses)}")
         
         return hypotheses
     

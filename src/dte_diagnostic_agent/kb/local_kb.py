@@ -2,6 +2,7 @@
 
 import os
 import re
+import logging
 from pathlib import Path
 from datetime import datetime
 
@@ -14,6 +15,7 @@ class LocalMarkdownKB(KnowledgeBaseInterface):
     """Local markdown file knowledge base."""
     
     def __init__(self, config: LocalKBConfig):
+        self.logger = logging.getLogger(__name__)
         self.case_dir = Path(config.case_dir)
         self.index: dict[str, Case] = {}
         self._load_index()
@@ -21,15 +23,26 @@ class LocalMarkdownKB(KnowledgeBaseInterface):
     def _load_index(self) -> None:
         """Load all case files from directory."""
         if not self.case_dir.exists():
+            self.logger.warning(f"Case directory does not exist: {self.case_dir}")
             return
+        
+        self.logger.info(f"Loading cases from directory: {self.case_dir}")
+        
+        loaded_count = 0
+        failed_count = 0
         
         for md_file in self.case_dir.glob("**/*.md"):
             try:
                 case = self._parse_case_file(md_file)
                 if case and case.case_id:
                     self.index[case.case_id] = case
+                    loaded_count += 1
+                    self.logger.debug(f"Loaded case: {case.case_id} - {case.title}")
             except Exception as e:
-                print(f"Warning: Failed to parse {md_file}: {e}")
+                failed_count += 1
+                self.logger.warning(f"Failed to parse {md_file}: {e}")
+        
+        self.logger.info(f"Knowledge base loaded: {loaded_count} cases, {failed_count} failed, total in index: {len(self.index)}")
     
     def _parse_case_file(self, file_path: Path) -> Case | None:
         """Parse markdown case file."""
@@ -45,20 +58,21 @@ class LocalMarkdownKB(KnowledgeBaseInterface):
                 title=frontmatter.get("title", ""),
                 category=frontmatter.get("category", "unknown"),
                 severity=frontmatter.get("severity", "medium"),
-                symptoms=sections.get("symptoms", frontmatter.get("symptoms", [])),
-                problem=sections.get("problem", frontmatter.get("problem", "")),
-                analysis=sections.get("analysis", ""),
-                solution=sections.get("solution", []),
-                verification=sections.get("verification", ""),
-                references=sections.get("references", []),
-                related_cases=frontmatter.get("related_cases", []),
+                symptoms=sections.get("symptoms") or frontmatter.get("symptoms") or [],
+                problem=sections.get("problem") or frontmatter.get("problem", ""),
+                analysis=sections.get("analysis") or "",
+                solution=sections.get("solution") or [],
+                verification=sections.get("verification") or "",
+                references=sections.get("references") or [],
+                related_cases=frontmatter.get("related_cases") or [],
                 created_at=self._parse_datetime(frontmatter.get("created_at")),
                 updated_at=self._parse_datetime(frontmatter.get("updated_at")),
-                tags=frontmatter.get("tags", []),
+                tags=frontmatter.get("tags") or [],
                 cluster=frontmatter.get("cluster"),
                 service=frontmatter.get("service"),
             )
-        except Exception:
+        except Exception as e:
+            self.logger.debug(f"Error parsing {file_path}: {e}")
             return None
     
     def _parse_frontmatter(self, content: str) -> tuple[dict[str, object], str]:

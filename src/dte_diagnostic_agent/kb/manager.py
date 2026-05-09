@@ -1,5 +1,7 @@
 """Knowledge base manager."""
 
+import logging
+
 from dte_diagnostic_agent.kb.interface import KnowledgeBaseInterface
 from dte_diagnostic_agent.kb.models import Case, SearchResult
 from dte_diagnostic_agent.kb.config import KnowledgeBaseConfig
@@ -11,6 +13,7 @@ class KnowledgeBaseManager:
     """Knowledge base manager - selects implementation based on config."""
     
     def __init__(self, config: KnowledgeBaseConfig):
+        self.logger = logging.getLogger(__name__)
         config.validate_config()
         self.config = config
         self.backend: KnowledgeBaseInterface
@@ -18,8 +21,10 @@ class KnowledgeBaseManager:
         match config.mode:
             case "local":
                 self.backend = LocalMarkdownKB(config.local)
+                self.logger.info(f"Knowledge base initialized with local backend, case_dir={config.local.case_dir}")
             case "remote":
                 self.backend = RemoteKBClient(config.remote)
+                self.logger.info(f"Knowledge base initialized with remote backend, api_url={config.remote.api_url}")
             case _:
                 raise ValueError(f"Unknown knowledge base mode: {config.mode}")
     

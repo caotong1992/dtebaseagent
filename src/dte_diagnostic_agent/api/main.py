@@ -19,7 +19,7 @@ from dte_diagnostic_agent.api.routes.diagnose import (
     LLMConfig,
 )
 from dte_diagnostic_agent.storage.session_store import SessionStore
-from dte_diagnostic_agent.kb.config import KnowledgeBaseConfig, LocalKBConfig, RemoteKBConfig
+from dte_diagnostic_agent.kb.config import KnowledgeBaseConfig, LocalKBConfig, RemoteKBConfig, QueryProcessorConfig
 
 API_VERSION = "v1"
 API_PREFIX = f"/api/{API_VERSION}"
@@ -115,11 +115,21 @@ def create_app(
         set_llm_config(llm_config)
         
         if hasattr(config, 'knowledge_base') and config.knowledge_base:
+            query_processor_cfg = None
+            if config.knowledge_base.get("query_processor"):
+                qp = config.knowledge_base["query_processor"]
+                query_processor_cfg = QueryProcessorConfig(
+                    enabled=qp.get("enabled", True),
+                    use_llm_translation=qp.get("use_llm_translation", True),
+                    cache_size=qp.get("cache_size", 100)
+                )
+            
             kb_config = KnowledgeBaseConfig(
                 mode=config.knowledge_base.get("mode", "local"),
                 local=LocalKBConfig(
                     case_dir=config.knowledge_base.get("local", {}).get("case_dir", "./cases")
-                )
+                ),
+                query_processor=query_processor_cfg
             )
             if config.knowledge_base.get("mode") == "remote" and config.knowledge_base.get("remote"):
                 remote_cfg = config.knowledge_base["remote"]

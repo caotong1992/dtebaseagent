@@ -98,16 +98,19 @@ def get_diagnostic_agent() -> DTEBaseDiagnosticAgent:
             raise RuntimeError("LLM API key not configured (config.llm.api_key or OPENAI_API_KEY)")
         
         kb_manager = None
+        query_processor_config = None
         kb_config = get_kb_config()
         if kb_config:
             kb_manager = KnowledgeBaseManager(kb_config)
+            query_processor_config = kb_config.query_processor
         
         _diagnostic_agent = DTEBaseDiagnosticAgent(
             api_key=api_key,
             base_url=config.base_url,
             model_name=config.model_name,
             temperature=config.temperature,
-            kb_manager=kb_manager
+            kb_manager=kb_manager,
+            query_processor_config=query_processor_config
         )
     return _diagnostic_agent
 

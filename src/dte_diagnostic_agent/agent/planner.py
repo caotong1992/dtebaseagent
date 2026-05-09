@@ -21,14 +21,38 @@ class DiagnosticPlanner:
     def __init__(self, llm: ChatOpenAI):
         self.llm = llm
     
+    def _extract_token_info(self, response) -> str:
+        """Extract token usage information from LLM response."""
+        try:
+            metadata = getattr(response, 'response_metadata', {}) or {}
+            token_usage = metadata.get('token_usage', {})
+            
+            if token_usage:
+                prompt_tokens = token_usage.get('prompt_tokens', 0)
+                completion_tokens = token_usage.get('completion_tokens', 0)
+                total_tokens = token_usage.get('total_tokens', 0)
+                return f"prompt={prompt_tokens}, completion={completion_tokens}, total={total_tokens}"
+            
+            usage = metadata.get('usage', {})
+            if usage:
+                prompt_tokens = usage.get('prompt_tokens', 0)
+                completion_tokens = usage.get('completion_tokens', 0)
+                total_tokens = usage.get('total_tokens', 0)
+                return f"prompt={prompt_tokens}, completion={completion_tokens}, total={total_tokens}"
+            
+            return "N/A"
+        except Exception:
+            return "N/A"
+    
     async def generate_plan(
         self,
         context: DiagnosticContext,
         similar_cases: list[Case]
     ) -> DiagnosticPlan:
         """Generate diagnostic plan based on context and historical cases."""
+        session_id = context.session_id
         category = context.category.value if context.category else "unknown"
-        logger.info(f"[Planner] 生成诊断计划, 问题类别: {category}")
+        logger.info(f"[{session_id}] [Planner] 生成诊断计划, 问题类别: {category}")
         
         similar_cases_text = self._format_similar_cases(similar_cases)
         
@@ -41,16 +65,18 @@ class DiagnosticPlanner:
             similar_cases=similar_cases_text
         )
         
-        prompt_preview = prompt[:500] + "..." if len(prompt) > 500 else prompt
-        logger.debug(f"[Planner] LLM调用输入(prompt前500字符): {prompt_preview}")
+        prompt_preview = prompt[:5000] + "..." if len(prompt) > 5000 else prompt
+        logger.info(f"[{session_id}] [Planner] LLM调用开始, prompt长度: {len(prompt)}")
+        logger.info(f"[{session_id}] [Planner] LLM调用输入(prompt前500字符): {prompt_preview}")
         
         start_time = time.perf_counter()
         response = await self.llm.ainvoke(prompt)
         elapsed_ms = (time.perf_counter() - start_time) * 1000
         
-        response_preview = response.content[:300] + "..." if len(response.content) > 300 else response.content
-        logger.info(f"[Planner] LLM调用完成, 耗时: {elapsed_ms:.2f}ms")
-        logger.debug(f"[Planner] LLM响应摘要: {response_preview}")
+        token_info = self._extract_token_info(response)
+        response_preview = response.content[:5000] + "..." if len(response.content) > 5000 else response.content
+        logger.info(f"[{session_id}] [Planner] LLM调用完成, 耗时: {elapsed_ms:.2f}ms, tokens: {token_info}")
+        logger.info(f"[{session_id}] [Planner] LLM响应: {response_preview}")
         
         parsed_data = self._parse_response(response.content)
         
@@ -58,9 +84,9 @@ class DiagnosticPlanner:
         
         if not steps:
             steps = self._get_default_steps(context)
-            logger.info(f"[Planner] 使用默认步骤, 步骤数: {len(steps)}")
+            logger.info(f"[{session_id}] [Planner] 使用默认步骤, 步骤数: {len(steps)}")
         
-        logger.info(f"[Planner] 生成步骤数: {len(steps)}, 步骤: {[s.name for s in steps]}")
+        logger.info(f"[{session_id}] [Planner] 生成步骤数: {len(steps)}, 步骤: {[s.name for s in steps]}")
         
         return DiagnosticPlan(
             steps=steps,
@@ -76,6 +102,7 @@ class DiagnosticPlanner:
             lines.append(f"{i}. [{case.case_id}] {case.title}")
             lines.append(f"   类别: {case.category}")
             lines.append(f"   症状: {', '.join(case.symptoms[:3])}")
+            lines.append(f"   分析过程: {case.analysis}")
         
         return "\n".join(lines)
     

@@ -29,6 +29,7 @@ INTENT_PROMPT = """你是一个专业的运维诊断助手，负责分析用户�
    - network_issue: 网络问题
    - resource_exhaustion: 资源耗尽
    - configuration_error: 配置错误
+   - collection_task_failed:  采集任务失败
    - unknown: 未知类型
 
 注意：
