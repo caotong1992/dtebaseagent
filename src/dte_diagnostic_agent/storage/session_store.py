@@ -27,6 +27,7 @@ class SessionStore:
         "top_hypothesis",
         "confidence",
         "error_message",
+        "report_json",
     ]
     
     def __init__(self, session_dir: str = "./data/sessions"):

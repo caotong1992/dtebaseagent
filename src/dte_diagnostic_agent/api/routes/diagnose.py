@@ -1,5 +1,7 @@
 """Diagnose API routes."""
 
+import asyncio
+import json
 import logging
 import os
 import uuid
@@ -18,6 +20,10 @@ from dte_diagnostic_agent.api.schemas.diagnose import (
     DiagnoseListItem,
     DiagnoseCancelResponse,
     DiagnoseProgress,
+    Hypothesis,
+    TopHypothesis,
+    RecommendedSolution,
+    SimilarCase,
 )
 from dte_diagnostic_agent.api.schemas.common import PaginationInfo
 from dte_diagnostic_agent.storage.session_store import SessionStore
@@ -163,7 +169,9 @@ async def _run_diagnostic_task(
             priority=request.priority or "medium"
         )
         
-        report = await agent.diagnose(user_input)
+        report = await agent.diagnose(user_input, session_id=session_id)
+        
+        report_json_str = report.model_dump_json()
         
         logger.info(f"[{session_id}] [Diagnose] 状态转换: RUNNING -> COMPLETED")
         await store.update(
@@ -172,7 +180,8 @@ async def _run_diagnostic_task(
             problem_category=report.problem_category.value if report.problem_category else "",
             top_hypothesis=report.top_hypothesis.hypothesis.problem if report.top_hypothesis else "",
             confidence=report.top_hypothesis.hypothesis.confidence if report.top_hypothesis else 0.0,
-            completed_at=datetime.now()
+            completed_at=datetime.now(),
+            report_json=report_json_str
         )
         
     except Exception as e:
@@ -184,6 +193,71 @@ async def _run_diagnostic_task(
             error_message=str(e),
             completed_at=datetime.now()
         )
+
+
+_scheduler_running: bool = False
+_scheduler_task: asyncio.Task | None = None
+
+
+async def _task_scheduler_loop(store: SessionStore):
+    global _scheduler_running
+    logger.info("[Scheduler] 任务调度器启动")
+    
+    while _scheduler_running:
+        try:
+            records, _ = await store.list_all(status_filter=SessionStatus.RUNNING, limit=10)
+            running_count = len(records)
+            
+            if running_count == 0:
+                pending_records, _ = await store.list_all(status_filter=SessionStatus.PENDING, limit=1)
+                
+                if pending_records:
+                    record = pending_records[0]
+                    session_id = record.session_id
+                    
+                    logger.info(f"[Scheduler] 发现 PENDING 任务: {session_id}, 启动诊断")
+                    
+                    await store.update(session_id, status=SessionStatus.RUNNING)
+                    
+                    logger.info(f"[{session_id}] [Scheduler] 状态转换: PENDING -> RUNNING")
+                    
+                    request = DiagnoseRequest(
+                        description=record.description,
+                        environment=None,
+                        symptoms=[],
+                        priority=record.severity
+                    )
+                    
+                    asyncio.create_task(_run_diagnostic_task(session_id, request, store))
+            
+            await asyncio.sleep(5)
+            
+        except Exception as e:
+            logger.error(f"[Scheduler] 调度器异常: {str(e)}")
+            logger.exception("[Scheduler] 异常堆栈:")
+            await asyncio.sleep(5)
+
+
+def start_scheduler(store: SessionStore) -> asyncio.Task:
+    global _scheduler_running, _scheduler_task
+    
+    if _scheduler_task is not None and not _scheduler_task.done():
+        logger.warning("[Scheduler] 调度器已在运行")
+        return _scheduler_task
+    
+    _scheduler_running = True
+    _scheduler_task = asyncio.create_task(_task_scheduler_loop(store))
+    logger.info("[Scheduler] 调度器任务已创建")
+    return _scheduler_task
+
+
+def stop_scheduler():
+    global _scheduler_running, _scheduler_task
+    
+    _scheduler_running = False
+    if _scheduler_task:
+        _scheduler_task.cancel()
+        logger.info("[Scheduler] 调度器已停止")
 
 
 @router.post(
@@ -217,13 +291,6 @@ async def create_diagnose(
     )
     
     await store.create(record)
-    
-    background_tasks.add_task(
-        _run_diagnostic_task,
-        session_id,
-        request,
-        store
-    )
     
     return DiagnoseCreateResponse(
         session_id=session_id,
@@ -289,15 +356,92 @@ async def get_diagnose(
             current_step = "cancelled"
             remaining_steps = []
     
+    summary = None
+    hypotheses = None
+    top_hypothesis = None
+    recommended_solutions = None
+    similar_cases = None
+    next_steps = None
+    escalation_needed = False
+    generated_at = None
+    error = None
+    
+    if record.status == SessionStatus.COMPLETED and record.report_json:
+        try:
+            report_data = json.loads(record.report_json)
+            summary = report_data.get("summary")
+            generated_at = datetime.fromisoformat(report_data.get("generated_at")) if report_data.get("generated_at") else None
+            
+            raw_hypotheses = report_data.get("hypotheses", [])
+            if raw_hypotheses:
+                hypotheses = [
+                    Hypothesis(
+                        id=h.get("hypothesis", {}).get("id", ""),
+                        problem=h.get("hypothesis", {}).get("problem", ""),
+                        confidence=h.get("hypothesis", {}).get("confidence", 0.0),
+                        evidence=h.get("hypothesis", {}).get("evidence", []),
+                        actions=h.get("hypothesis", {}).get("actions", []),
+                    )
+                    for h in raw_hypotheses
+                ]
+            
+            raw_top = report_data.get("top_hypothesis")
+            if raw_top and raw_top.get("hypothesis"):
+                top_hypothesis = TopHypothesis(
+                    problem=raw_top.get("hypothesis", {}).get("problem", ""),
+                    confidence=raw_top.get("hypothesis", {}).get("confidence", 0.0),
+                )
+            
+            raw_solutions = report_data.get("recommended_solutions", [])
+            if raw_solutions:
+                recommended_solutions = [
+                    RecommendedSolution(
+                        description=s.get("description", ""),
+                        steps=s.get("steps", []),
+                        confidence=s.get("confidence", 0.0),
+                    )
+                    for s in raw_solutions
+                ]
+            
+            raw_cases = report_data.get("similar_cases", [])
+            if raw_cases:
+                similar_cases = [
+                    SimilarCase(
+                        case_id=c.get("case_id", ""),
+                        title=c.get("title", ""),
+                        similarity=c.get("similarity", 0.0),
+                    )
+                    for c in raw_cases
+                ]
+            
+            next_steps = report_data.get("next_steps", [])
+            escalation_needed = report_data.get("escalation_needed", False)
+        except Exception as e:
+            logger.warning(f"[{session_id}] [Diagnose] 解析 report_json 失败: {e}")
+    
+    if record.status == SessionStatus.FAILED:
+        error = record.error_message
+    
     return DiagnoseResult(
         session_id=record.session_id,
         status=status_enum,
+        generated_at=generated_at,
+        summary=summary,
+        problem_category=record.problem_category if record.problem_category else None,
+        severity=record.severity if record.severity else None,
+        hypotheses=hypotheses,
+        top_hypothesis=top_hypothesis,
+        recommended_solutions=recommended_solutions,
+        similar_cases=similar_cases,
+        next_steps=next_steps,
+        escalation_needed=escalation_needed,
         progress=DiagnoseProgress(
             current_step=current_step,
             completed_steps=completed_steps,
             remaining_steps=remaining_steps,
             percentage=percentage,
         ),
+        error=error,
     )
 
 

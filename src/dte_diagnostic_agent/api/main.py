@@ -17,6 +17,8 @@ from dte_diagnostic_agent.api.routes.diagnose import (
     set_llm_config,
     set_kb_config,
     LLMConfig,
+    start_scheduler,
+    stop_scheduler,
 )
 from dte_diagnostic_agent.storage.session_store import SessionStore
 from dte_diagnostic_agent.kb.config import KnowledgeBaseConfig, LocalKBConfig, RemoteKBConfig, QueryProcessorConfig
@@ -72,7 +74,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         if config.knowledge_base:
             logger.info(f"Knowledge base mode: {config.knowledge_base.get('mode', 'local')}")
     
+    if _session_store:
+        start_scheduler(_session_store)
+        logger.info("Task scheduler started")
+    
     yield
+    
+    stop_scheduler()
+    logger.info("Task scheduler stopped")
     
     logger.info(f"Shutting down {_APP_TITLE}")
 

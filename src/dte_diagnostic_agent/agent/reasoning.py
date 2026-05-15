@@ -148,7 +148,7 @@ class ReasoningEngine:
             collected_evidence=evidence_text
         )
         
-        prompt_preview = prompt[:500] + "..." if len(prompt) > 500 else prompt
+        prompt_preview = prompt[:5000] + "..." if len(prompt) > 500 else prompt
         logger.info(f"[{session_id}] [Reasoning] LLM调用开始, prompt长度: {len(prompt)}")
         logger.info(f"[{session_id}] [Reasoning] LLM调用输入(prompt前500字符): {prompt_preview}")
         
@@ -157,7 +157,7 @@ class ReasoningEngine:
         elapsed_ms = (time.perf_counter() - start_time) * 1000
         
         token_info = self._extract_token_info(response)
-        response_preview = response.content[:500] + "..." if len(response.content) > 500 else response.content
+        response_preview = response.content[:5000] + "..." if len(response.content) > 500 else response.content
         logger.info(f"[{session_id}] [Reasoning] LLM调用完成, 耗时: {elapsed_ms:.2f}ms, tokens: {token_info}")
         logger.info(f"[{session_id}] [Reasoning] LLM响应: {response_preview}")
         
@@ -184,7 +184,7 @@ class ReasoningEngine:
             f"问题类别: {context.category.value if context.category else 'unknown'}",
             f"症状: {', '.join(context.symptoms)}",
             f"时间范围: {context.time_range.start} ~ {context.time_range.end}",
-            f"集群: {context.environment.cluster_name}",
+            f"集群: {context.environment.cluster_name if context.environment else 'unknown'}",
         ]
         return "\n".join(lines)
     
@@ -247,13 +247,14 @@ class ReasoningEngine:
             confidence=hypothesis.confidence,
         ))
         
-        for case in similar_cases[:3]:
+        for result in similar_cases[:3]:
+            case = result.case
             if case.solution:
                 solutions.append(Solution(
-                    description=case.solution.description,
-                    steps=case.solution.steps,
+                    description=f"基于案例 {case.case_id}: {case.title}",
+                    steps=case.solution,
                     based_on_case=case.case_id,
-                    confidence=case.similarity,
+                    confidence=result.similarity,
                 ))
         
         return solutions

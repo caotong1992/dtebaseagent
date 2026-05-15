@@ -26,6 +26,7 @@ class SessionRecord(BaseModel):
     top_hypothesis: str = Field(default="", description="Top hypothesis")
     confidence: float = Field(default=0.0, description="Confidence score")
     error_message: str = Field(default="", description="Error message if failed")
+    report_json: str = Field(default="", description="Serialized DiagnosticReport JSON")
 
     def to_csv_row(self) -> dict[str, str]:
         row = {
@@ -41,6 +42,7 @@ class SessionRecord(BaseModel):
             "top_hypothesis": self.top_hypothesis,
             "confidence": str(self.confidence),
             "error_message": self.error_message,
+            "report_json": self.report_json,
         }
         return row
 
@@ -59,4 +61,5 @@ class SessionRecord(BaseModel):
             top_hypothesis=row.get("top_hypothesis", ""),
             confidence=float(row.get("confidence", "0.0")),
             error_message=row.get("error_message", ""),
+            report_json=row.get("report_json", ""),
         )

@@ -184,7 +184,7 @@ class LocalMarkdownKB(KnowledgeBaseInterface):
             term_lower = term.lower()
             
             for case in self.index.values():
-                if category and case.category != category:
+                if category and category != "unknown" and case.category != category:
                     continue
                 
                 score = 0

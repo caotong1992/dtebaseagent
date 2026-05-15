@@ -29,7 +29,9 @@ d:\code\dtebaseagent/
 │
 ├── cases/                    # 案例库目录
 │   ├── collector_task/       # Collector 任务案例
-│   │   └── CASE-020-collector_task_failed.md
+│   │   ├── CASE-020-collector_task_failed.md
+│   │   ├── CASE-021-collector_task_failed_csm.loading.error.md
+│   │   └── CASE-022-collector_task_failed_csm.task.timeout.md
 │   ├── database/             # 数据库案例
 │   │   ├── CASE-001-db-connection-timeout.md
 │   │   └── CASE-002-db-slow-query.md
@@ -61,12 +63,15 @@ src/dte_diagnostic_agent/
 │   ├── intent_parser.py  # 意图解析
 │   ├── planner.py  # 诊断规划
 │   ├── reasoning.py  # 推理分析
+│   ├── case_step_parser.py  # 案例步骤解析器
+│   ├── info_extractor.py  # 关键信息提取器
 │   └── models/     # 数据模型
 │       ├── context.py     # 诊断上下文
 │       ├── hypothesis.py  # 问题假设
 │       ├── input.py       # 用户输入
 │       ├── plan.py        # 诊断计划
-│       └── report.py      # 诊断报告
+│       ├── report.py      # 诊断报告
+│       └── parsed_step.py # 解析步骤模型
 │
 ├── api/            # RESTful API接口
 │   ├── main.py     # FastAPI 应用
@@ -110,7 +115,8 @@ src/dte_diagnostic_agent/
 ├── prompts/        # Prompt模板
 │   ├── intent.py   # 意图理解
 │   ├── planning.py # 诊断规划
-│   └ reasoning.py  # 推理分析
+│   ├── reasoning.py  # 推理分析
+│   └── case_step.py  # 案例步骤解析
 │
 ├── storage/        # 数据存储
 │   ├── models.py   # 数据模型
@@ -140,17 +146,32 @@ src/dte_diagnostic_agent/
 
 ```python
 class DTEBaseDiagnosticAgent:
-    def __init__(api_key, base_url, model_name, temperature, kb_manager, query_processor_config)
-    async def diagnose(user_input) -> DiagnosticReport
+    def __init__(
+        api_key, 
+        base_url, 
+        model_name, 
+        temperature, 
+        kb_manager, 
+        query_processor_config,
+        case_step_parser  # 新增参数
+    )
+    async def diagnose(user_input, session_id) -> DiagnosticReport
 ```
 
 **诊断流程**:
 1. 意图解析 → IntentParser
 2. 案例检索 → KnowledgeBaseManager（支持查询预处理）
-3. 规划生成 → DiagnosticPlanner
-4. 工具执行 → 模拟执行诊断步骤
-5. 推理分析 → ReasoningEngine
-6. 报告生成 → DiagnosticReport
+3. 案例步骤解析 → CaseStepParser（新增）
+4. 迭代检索检测 → has_iterative_search（新增）
+5. 规划生成 → DiagnosticPlanner
+6. 工具执行 → 模拟执行诊断步骤
+7. 推理分析 → ReasoningEngine
+8. 报告生成 → DiagnosticReport
+
+**新增功能**:
+- session_id 参数传递，保持日志一致性
+- collected_data 存储步骤执行结果
+- 迭代检索流程支持（引导型案例）
 
 ### 1.2 IntentParser (intent_parser.py)
 
@@ -158,7 +179,7 @@ class DTEBaseDiagnosticAgent:
 
 ```python
 class IntentParser:
-    async def parse(user_input: UserInput) -> DiagnosticContext
+    async def parse(user_input: UserInput, session_id: str) -> DiagnosticContext
 ```
 
 **功能**:
@@ -202,15 +223,55 @@ class ReasoningEngine:
 - RULE_002: 性能下降
 - RULE_003: 服务不可用
 
-### 1.5 数据模型 (agent/models/)
+### 1.5 CaseStepParser (case_step_parser.py)
+
+**案例步骤解析器**，将案例分析过程转换为结构化步骤：
+
+```python
+class CaseStepParser:
+    def __init__(llm: ChatOpenAI)
+    async def parse_case_analysis(case: Case) -> ParsedAnalysis
+    def to_diagnostic_steps(parsed, collected_data) -> list[DiagnosticStep]
+    def _replace_template_vars(params, collected_data) -> dict
+    def detect_iterative_search(parsed) -> bool
+```
+
+**功能**:
+- 使用 LLM 解析案例的分析过程章节
+- 提取结构化的诊断步骤
+- 支持模板变量替换（{task_id}, {last_error_code}）
+- 检测是否需要迭代检索
+- 内置缓存机制避免重复调用 LLM
+
+### 1.6 KeyInfoExtractor (info_extractor.py)
+
+**关键信息提取器**，从工具执行结果提取关键信息：
+
+```python
+class KeyInfoExtractor:
+    ERROR_CODE_PATTERN = r'(csm\.[a-z]+\.[a-z]+|data\.[a-z]+\.[a-z]+|send\.[a-z]+\.[a-z]+|task\.[a-z]+\.[a-z]+)'
+    
+    def extract_last_error_code(result: dict) -> str | None
+    def extract_task_id(context: DiagnosticContext) -> str | None
+```
+
+**功能**:
+- 从数据库查询结果提取 last_error_code
+- 从问题描述提取 task_id
+- 支持正则匹配错误码模式（csm.xxx.xxx 格式）
+
+### 1.7 数据模型 (agent/models/)
 
 | 模型 | 文件 | 用途 |
 |------|------|------|
-| DiagnosticContext | context.py | 诊断上下文（问题描述、环境、症状等） |
+| DiagnosticContext | context.py | 诊断上下文（问题描述、环境、症状、collected_data） |
 | Hypothesis | hypothesis.py | 问题假设（原因、置信度、证据） |
 | DiagnosticPlan | plan.py | 诊断计划（步骤列表） |
 | DiagnosticReport | report.py | 诊断报告（结果、解决方案） |
 | UserInput | input.py | 用户输入 |
+| StepActionType | parsed_step.py | 步骤动作类型枚举（TOOL_EXECUTE, CASE_SEARCH, MANUAL_CHECK, DECISION） |
+| ParsedStep | parsed_step.py | 解析后的步骤模型（step_number, action_type, tool_name, parameters, description, next_action, template_vars） |
+| ParsedAnalysis | parsed_step.py | 解析后的分析模型（case_id, steps, has_iterative_search） |
 
 ---
 
@@ -350,6 +411,8 @@ category: database
 ---
 ## 问题现象
 ...
+## 分析过程
+...
 ## 解决方案
 ...
 ```
@@ -412,6 +475,7 @@ class PreprocessedQuery:
 | INTENT_PROMPT | intent.py | 意图理解，引导LLM输出结构化JSON |
 | PLANNING_PROMPT | planning.py | 诊断规划，生成诊断步骤 |
 | REASONING_PROMPT | reasoning.py | 推理分析，生成问题假设 |
+| CASE_STEP_PARSE_PROMPT | case_step.py | 案例步骤解析，引导LLM将分析过程转换为JSON结构 |
 
 ---
 
@@ -525,7 +589,7 @@ python -m dte_diagnostic_agent --config config.yaml --port 8080
 |------|------|
 | database/ | CASE-001 数据库连接超时, CASE-002 数据库慢查询 |
 | network/ | CASE-010 网络超时 |
-| collector_task/ | CASE-020 Collector任务失败 |
+| collector_task/ | CASE-020 Collector任务失败, CASE-021 csm.loading.error, CASE-022 csm.task.timeout |
 
 ---
 
@@ -547,13 +611,31 @@ QueryProcessor.process()
 KnowledgeBaseManager.search()
     │ 多语言关键词检索相似案例
     ▼
-DiagnosticPlanner.generate_plan()
-    │ 生成诊断步骤
+CaseStepParser.parse_case_analysis()
+    │ 解析案例分析过程
     ▼
-DiagnosticPlan
+检测迭代检索需求 (has_iterative_search)
+    │
+    ├─ 有迭代需求 ────────────────────────┐
+    │                                      │
+    │  _build_plan_from_parsed_cases()     │
+    │      │ 从解析案例生成计划             │
+    │      ▼                               │
+    │  执行 tool_execute 步骤              │
+    │      │ 如 database_query             │
+    │      ▼                               │
+    │  KeyInfoExtractor.extract()          │
+    │      │ 提取 last_error_code           │
+    │      ▼                               │
+    │  KnowledgeBaseManager.search(error_code)
+    │      │ 第二轮精确检索                 │
+    │      ▼                               │
+    │  更新诊断计划                         │
+    │                                      │
+    └──────────────────────────────────────┘
     │
     ▼
-执行工具步骤
+执行诊断步骤
     │ ssh_connect → log_analysis → resource_monitor
     ▼
 ReasoningEngine.analyze()
@@ -580,3 +662,7 @@ DiagnosticReport
 6. **优雅关闭**: systemd服务支持SIGTERM信号处理
 7. **查询预处理**: 关键词提取 + 中英文双向翻译，提高知识库检索可靠性
 8. **启动脚本**: bin 目录提供 Windows/Linux 启动停止脚本
+9. **案例步骤解析器**: 使用 LLM 将案例的分析过程转换为结构化的可执行步骤
+10. **迭代检索机制**: 支持引导型案例，先执行步骤获取信息，再用新信息进行第二轮检索
+11. **模板变量系统**: 支持在案例中定义模板变量（{task_id}, {last_error_code}），运行时动态替换
+12. **关键信息提取**: 使用正则表达式从工具执行结果提取关键信息（错误码、任务ID等）

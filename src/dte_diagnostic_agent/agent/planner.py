@@ -61,7 +61,7 @@ class DiagnosticPlanner:
             category=category,
             symptoms=", ".join(context.symptoms),
             time_range=f"{context.time_range.start} ~ {context.time_range.end}",
-            cluster_name=context.environment.cluster_name,
+            cluster_name=context.environment.cluster_name if context.environment else "unknown",
             similar_cases=similar_cases_text
         )
         
@@ -131,7 +131,7 @@ class DiagnosticPlanner:
         steps = []
         
         node_host = ""
-        if context.environment.node_info:
+        if context.environment and context.environment.node_info:
             node_host = context.environment.node_info.host
         
         if node_host:

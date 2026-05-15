@@ -2,7 +2,6 @@
 
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
-import asyncssh
 
 
 class SSHConnectInput(BaseModel):
@@ -20,6 +19,11 @@ async def _ssh_connect(
     password: str | None = None,
     ssh_key_path: str | None = None
 ) -> str:
+    try:
+        import asyncssh
+    except ImportError:
+        return f"SSH connection failed: asyncssh module not installed. Please install it with: pip install asyncssh"
+    
     try:
         conn = await asyncssh.connect(
             host=host,

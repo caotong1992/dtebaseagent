@@ -51,28 +51,35 @@ class QueryProcessor:
         if self.config:
             self.logger.info(f"QueryProcessor initialized with cache_size={self.config.cache_size}")
     
-    async def process(self, query: str) -> PreprocessedQuery:
+    async def process(self, query: str, session_id: str = "") -> PreprocessedQuery:
         """Process a query to extract and translate keywords.
         
         Args:
             query: Raw query string from user.
+            session_id: Session ID for logging trace.
             
         Returns:
             PreprocessedQuery with original query and multilingual keywords.
         """
         if query in self._cache:
+            self.logger.info(f"[{session_id}] [QueryProcessor] 缓存命中: {query[:50]}")
             return self._cache[query]
         
+        self.logger.info(f"[{session_id}] [QueryProcessor] 开始处理查询: {query[:100]}")
+        
         keywords = self._extract_keywords(query)
+        self.logger.info(f"[{session_id}] [QueryProcessor] 提取关键词: {keywords}")
         
         if not keywords:
             result = PreprocessedQuery(original=query)
             self._cache[query] = result
             return result
         
-        chinese_keywords, english_keywords = await self._translate_keywords(keywords)
+        chinese_keywords, english_keywords = await self._translate_keywords(keywords, session_id)
         
         all_keywords = self._merge_and_deduplicate(chinese_keywords, english_keywords)
+        
+        self.logger.info(f"[{session_id}] [QueryProcessor] 处理完成, 中文关键词: {chinese_keywords}, 英文关键词: {english_keywords}")
         
         result = PreprocessedQuery(
             original=query,
@@ -95,7 +102,7 @@ class QueryProcessor:
         """
         return self.keyword_extractor.extract_keywords(text)
     
-    async def _translate_keywords(self, keywords: list[str]) -> tuple[list[str], list[str]]:
+    async def _translate_keywords(self, keywords: list[str], session_id: str = "") -> tuple[list[str], list[str]]:
         """Translate keywords between Chinese and English.
         
         Chinese keywords are translated to English.
@@ -104,6 +111,7 @@ class QueryProcessor:
         
         Args:
             keywords: List of keywords to translate.
+            session_id: Session ID for logging trace.
             
         Returns:
             Tuple of (chinese_keywords, english_keywords).
@@ -123,14 +131,14 @@ class QueryProcessor:
                 chinese_keywords.append(keyword)
                 if self.config and self.config.use_llm_translation:
                     translated = await self.translator.translate(
-                        keyword, "中文", "英文"
+                        keyword, "中文", "英文", session_id
                     )
                     english_keywords.append(translated)
             else:
                 english_keywords.append(keyword)
                 if self.config and self.config.use_llm_translation:
                     translated = await self.translator.translate(
-                        keyword, "英文", "中文"
+                        keyword, "英文", "中文", session_id
                     )
                     chinese_keywords.append(translated)
         

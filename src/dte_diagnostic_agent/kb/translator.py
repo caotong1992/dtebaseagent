@@ -20,9 +20,9 @@ class TranslatorService:
     def _get_cache_key(self, source_lang: str, target_lang: str, text: str) -> str:
         return f"{source_lang}:{target_lang}:{text}"
     
-    def _clear_cache_if_needed(self) -> None:
+    def _clear_cache_if_needed(self, session_id: str = "") -> None:
         if len(self._cache) >= self.cache_size:
-            self.logger.debug(f"[Translator] 缓存已满({self.cache_size}), 清空缓存")
+            self.logger.info(f"[{session_id}] [Translator] 缓存已满({self.cache_size}), 清空缓存")
             self._cache.clear()
     
     def _extract_token_info(self, response) -> str:
@@ -48,22 +48,22 @@ class TranslatorService:
         except Exception:
             return "N/A"
     
-    async def translate(self, text: str, source_lang: str, target_lang: str) -> str:
+    async def translate(self, text: str, source_lang: str, target_lang: str, session_id: str = "") -> str:
         if not self.llm:
-            self.logger.debug(f"[Translator] LLM未配置, 返回原文: {text[:30]}")
+            self.logger.info(f"[{session_id}] [Translator] LLM未配置, 返回原文: {text[:30]}")
             return text
         
         cache_key = self._get_cache_key(source_lang, target_lang, text)
         
         if cache_key in self._cache:
-            self.logger.debug(f"[Translator] 缓存命中: {text[:30]} ({source_lang}->{target_lang})")
+            self.logger.info(f"[{session_id}] [Translator] 缓存命中: {text[:30]} ({source_lang}->{target_lang})")
             return self._cache[cache_key]
         
         prompt = f"将以下{source_lang}关键词翻译为{target_lang}，只返回翻译结果\n\n{text}"
         
         text_preview = text[:50] + "..." if len(text) > 50 else text
-        self.logger.info(f"[Translator] LLM调用开始, 翻译: {text_preview} ({source_lang}->{target_lang})")
-        self.logger.info(f"[Translator] LLM调用输入(prompt): {prompt}")
+        self.logger.info(f"[{session_id}] [Translator] LLM调用开始, 翻译: {text_preview} ({source_lang}->{target_lang})")
+        self.logger.info(f"[{session_id}] [Translator] LLM调用输入(prompt): {prompt}")
         
         start_time = time.perf_counter()
         response = await self.llm.ainvoke(prompt)
@@ -73,10 +73,10 @@ class TranslatorService:
         
         token_info = self._extract_token_info(response)
         result_preview = result[:50] + "..." if len(result) > 50 else result
-        self.logger.info(f"[Translator] LLM调用完成, 耗时: {elapsed_ms:.2f}ms, tokens: {token_info}")
-        self.logger.info(f"[Translator] LLM响应(翻译结果): {result_preview}")
+        self.logger.info(f"[{session_id}] [Translator] LLM调用完成, 耗时: {elapsed_ms:.2f}ms, tokens: {token_info}")
+        self.logger.info(f"[{session_id}] [Translator] LLM响应(翻译结果): {result_preview}")
         
-        self._clear_cache_if_needed()
+        self._clear_cache_if_needed(session_id)
         self._cache[cache_key] = result
         
         return result

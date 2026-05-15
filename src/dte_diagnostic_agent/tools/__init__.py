@@ -7,7 +7,7 @@ from dte_diagnostic_agent.tools.resource import ResourceMonitorTool
 from dte_diagnostic_agent.tools.k8s import K8sOperationTool
 from dte_diagnostic_agent.tools.config import ConfigCheckTool
 from dte_diagnostic_agent.tools.network import NetworkDiagTool
-from dte_diagnostic_agent.tools.case import CaseSearchTool
+from dte_diagnostic_agent.tools.case import create_case_search_tool, MockCaseSearchTool
 
 __all__ = [
     "SSHConnectTool",
@@ -17,5 +17,6 @@ __all__ = [
     "K8sOperationTool",
     "ConfigCheckTool",
     "NetworkDiagTool",
-    "CaseSearchTool",
+    "MockCaseSearchTool",
+    "create_case_search_tool",
 ]

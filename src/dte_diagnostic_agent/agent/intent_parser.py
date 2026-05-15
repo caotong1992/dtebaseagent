@@ -29,9 +29,10 @@ class IntentParser:
     def __init__(self, llm: ChatOpenAI):
         self.llm = llm
     
-    async def parse(self, user_input: UserInput) -> DiagnosticContext:
+    async def parse(self, user_input: UserInput, session_id: str | None = None) -> DiagnosticContext:
         """Parse user input and return DiagnosticContext."""
-        session_id = f"diag-{datetime.now().strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:8]}"
+        if session_id is None:
+            session_id = f"diag-{datetime.now().strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:8]}"
         
         input_text = self._format_input(user_input)
         prompt = INTENT_PROMPT.format(user_input=input_text)
@@ -150,23 +151,33 @@ class IntentParser:
         self,
         env: ClusterInfo | None,
         parsed_data: dict
-    ) -> ClusterInfo:
+    ) -> ClusterInfo | None:
         if env:
             return env
         
         parsed_env = parsed_data.get("environment", {})
+        if not parsed_env:
+            return None
+        
         parsed_node = parsed_env.get("node_info", {})
         
+        def _get_or_default(d: dict, key: str, default: str) -> str:
+            val = d.get(key)
+            return val if val is not None else default
+        
         return ClusterInfo(
-            cluster_name=parsed_env.get("cluster_name", "unknown"),
-            cluster_type=parsed_env.get("cluster_type", "standalone"),
+            cluster_name=_get_or_default(parsed_env, "cluster_name", "unknown"),
+            cluster_type=_get_or_default(parsed_env, "cluster_type", "vm"),
             node_info=NodeInfo(
-                host=parsed_node.get("host", ""),
+                node_name=_get_or_default(parsed_node, "node_name", ""),
+                host=_get_or_default(parsed_node, "host", ""),
                 port=parsed_node.get("port", 22),
-                username=parsed_node.get("username", ""),
-                auth_type=parsed_node.get("auth_type", "password"),
+                username=_get_or_default(parsed_node, "username", ""),
+                auth_type=_get_or_default(parsed_node, "auth_type", "password"),
+                password=_get_or_default(parsed_node, "password", ""),
+                root_password=_get_or_default(parsed_node, "root_password", ""),
             ) if parsed_node.get("host") else None,
-            service_name=parsed_env.get("service_name", "DTEBaseService"),
+            service_name=_get_or_default(parsed_env, "service_name", "DTEBaseService"),
             namespace=parsed_env.get("namespace"),
         )
     

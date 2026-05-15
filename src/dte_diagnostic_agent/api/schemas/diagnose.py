@@ -37,7 +37,7 @@ class NodeInfo(BaseModel):
 class Environment(BaseModel):
     """Environment information for diagnosis."""
 
-    cluster_name: str = Field(description="Cluster name")
+    cluster_name: str = Field(default="", description="Cluster name")
     node_info: NodeInfo | None = Field(default=None, description="Target node information")
     service_name: str = Field(
         default="DTEBaseService",
@@ -68,7 +68,7 @@ class DiagnoseRequest(BaseModel):
 
     description: str = Field(description="Problem description")
     time_range: TimeRange | None = Field(default=None, description="Time range")
-    environment: Environment = Field(description="Environment information")
+    environment: Environment | None = Field(default=None, description="Environment information")
     symptoms: list[str] | None = Field(default=None, description="List of symptoms")
     priority: Priority = Field(default=Priority.MEDIUM, description="Priority level")
     options: DiagnoseOptions | None = Field(default=None, description="Diagnostic options")
