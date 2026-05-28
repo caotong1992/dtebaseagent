@@ -90,6 +90,7 @@ class AppConfig(BaseModel):
     auth: AuthConfig = Field(default_factory=AuthConfig)
     clusters: dict[str, ClusterConfig] = Field(default_factory=dict)
     knowledge_base: dict[str, Any] = Field(default_factory=dict)
+    is_mock_mode: bool = Field(default=False)
 
 
 class GracefulShutdownManager:
@@ -456,6 +457,7 @@ def main() -> int:
     Returns:
         Exit code (0 for success, non-zero for error)
     """
+    os.environ['NO_PROXY']='oneapi.rnd.huawei.com, omt.odae.dev.huawei.com'
     args = parse_args()
 
     try:
@@ -466,6 +468,9 @@ def main() -> int:
     except yaml.YAMLError as e:
         print(f"Error: Invalid YAML in config file: {e}", file=sys.stderr)
         return 1
+    
+    if config.is_mock_mode:
+        os.environ['mock_mode']='1'
 
     config = merge_cli_args_with_config(config, args)
 

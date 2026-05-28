@@ -20,6 +20,7 @@ class ProblemCategory(str, Enum):
     NETWORK_ISSUE = "network_issue"
     RESOURCE_EXHAUSTION = "resource_exhaustion"
     CONFIGURATION_ERROR = "configuration_error"
+    COLLECTION_TASK_FAILED = "collection_task_failed"
     UNKNOWN = "unknown"
 
 
@@ -37,7 +38,7 @@ class NodeInfo(BaseModel):
 class ClusterInfo(BaseModel):
     cluster_name: str = Field(default="", description="Cluster name")
     cluster_type: str = Field(default="vm", description="Cluster type: k8s/vm")
-    node_info: NodeInfo | None = Field(default=None, description="Target node info")
+    node_info: list[NodeInfo] = Field(default_factory=list, description="Target node info list")
     service_name: str = Field(default="DTEBaseService", description="Service name")
     namespace: str | None = Field(default=None, description="K8s namespace")
 

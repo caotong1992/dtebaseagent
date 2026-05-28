@@ -216,6 +216,7 @@ class LocalMarkdownKB(KnowledgeBaseInterface):
                     case_reasons[case.case_id].extend(match_reasons)
         
         results = []
+        self.logger.info(f"[LocalKB] case_reasons: {case_reasons}")
         for case_id, total_score in case_scores.items():
             case = self.index[case_id]
             unique_reasons = list(dict.fromkeys(case_reasons[case_id]))

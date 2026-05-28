@@ -51,28 +51,30 @@ class QueryProcessor:
         if self.config:
             self.logger.info(f"QueryProcessor initialized with cache_size={self.config.cache_size}")
     
-    async def process(self, query: str, session_id: str = "") -> PreprocessedQuery:
+    async def process(self, context: DiagnosticContext, session_id: str = "") -> PreprocessedQuery:
         """Process a query to extract and translate keywords.
         
         Args:
-            query: Raw query string from user.
+            context: context object containing problem description.
             session_id: Session ID for logging trace.
             
         Returns:
             PreprocessedQuery with original query and multilingual keywords.
         """
-        if query in self._cache:
-            self.logger.info(f"[{session_id}] [QueryProcessor] 缓存命中: {query[:50]}")
-            return self._cache[query]
-        
-        self.logger.info(f"[{session_id}] [QueryProcessor] 开始处理查询: {query[:100]}")
-        
-        keywords = self._extract_keywords(query)
+        if context.symptoms:
+            keywords = context.symptoms
+        else:
+            query = context.problem_description
+            if query in self._cache:
+                self.logger.info(f"[{session_id}] [QueryProcessor] 缓存命中: {query[:50]}")
+                return self._cache[query]
+            self.logger.info(f"[{session_id}] [QueryProcessor] 开始处理查询: {query[:100]}")
+            keywords = self._extract_keywords(query)
         self.logger.info(f"[{session_id}] [QueryProcessor] 提取关键词: {keywords}")
         
         if not keywords:
-            result = PreprocessedQuery(original=query)
-            self._cache[query] = result
+            result = PreprocessedQuery(original=context.problem_description)
+            self._cache[context.problem_description] = result
             return result
         
         chinese_keywords, english_keywords = await self._translate_keywords(keywords, session_id)
@@ -82,13 +84,13 @@ class QueryProcessor:
         self.logger.info(f"[{session_id}] [QueryProcessor] 处理完成, 中文关键词: {chinese_keywords}, 英文关键词: {english_keywords}")
         
         result = PreprocessedQuery(
-            original=query,
+            original=context.problem_description,
             chinese_keywords=chinese_keywords,
             english_keywords=english_keywords,
             all_keywords=all_keywords,
         )
         
-        self._cache[query] = result
+        self._cache[context.problem_description] = result
         return result
     
     def _extract_keywords(self, text: str) -> list[str]:

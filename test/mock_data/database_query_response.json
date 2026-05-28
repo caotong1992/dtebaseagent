@@ -1,0 +1,13 @@
+{
+    "columns": [
+        "LAST_RESULT",
+        "LAST_ERROR_CODE",
+        "LAST_FAIL_REASON"
+    ],
+    "data": [
+        [
+            "failed",
+             "collector_failed",
+              "[{\"jobId\":\"mockjobid-123456\",\"type\":\"iManagerU2000\",\"errorMsg\":[\"invcollectfram.executors.CALL_REFLECT_EXECUTE_FAIL\"]}]"]
+    ]
+}

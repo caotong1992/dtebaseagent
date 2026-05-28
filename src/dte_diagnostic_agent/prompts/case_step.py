@@ -67,8 +67,7 @@ CASE_STEP_PARSE_PROMPT = """你是一个诊断步骤解析器。请分析以下�
       "next_action": null,
       "template_vars": ["last_error_code"]
     }}
-  ],
-  "has_iterative_search": true
+  ]
 }}
 ```
 

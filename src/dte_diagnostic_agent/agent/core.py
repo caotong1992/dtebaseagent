@@ -1,5 +1,6 @@
 """DTEBaseDiagnosticAgent core implementation."""
 
+from ast import keyword
 from datetime import datetime
 import json
 import uuid
@@ -103,6 +104,61 @@ class DTEBaseDiagnosticAgent:
         if tool_name == "case_search":
             return self._get_case_search_tool()
         return self.STATIC_TOOLS.get(tool_name)
+
+    async def load_scene_guide_lines(self, context: DiagnosticContext) -> Case:
+        '''
+        加载场景引导案例
+        '''
+        keywords = ["scene guide"]
+        if context.category.value == ProblemCategory.COLLECTION_TASK_FAILED:
+            keywords.append("采集任务失败")
+        else:
+            return None
+        results = await self.kb_manager.search(
+            query=[],
+            keywords=keywords,
+            symptoms=[],
+            top_k=1
+        )
+        if results:
+            return results[0].case
+        else:
+            return None
+    
+    # async def test(self, context: DiagnosticContext, session_id: str | None = None):
+    #     '''
+    #     测试用例
+    #     '''
+    #     similar_cases = await self._search_similar_cases(context, session_id)
+        
+    #     parsed_analyses: list[ParsedAnalysis] = []
+    #     for result in similar_cases:
+    #         case = result.case
+    #         if case.analysis:
+    #             parsed = await self.case_step_parser.parse_case_analysis(case, session_id)
+    #             parsed_analyses.append(parsed)
+    #             self.logger.info(f"[{session_id}] [Agent] 解析案例 {case.case_id}, 步骤数: {len(parsed.steps)}, 迭代检索: {parsed.has_iterative_search}")
+        
+    #     iterative_parsed = [p for p in parsed_analyses if p.has_iterative_search]
+        
+    #     if iterative_parsed:
+    #         self.logger.info(f"[{session_id}] [Agent] 检测到迭代检索需求，使用案例 {[p.case_id for p in iterative_parsed]}")
+            
+    #         selected_parsed = iterative_parsed[0]
+    #         selected_result = next((r for r in similar_cases if r.case.case_id == selected_parsed.case_id), similar_cases[0])
+    #         selected_case = selected_result.case
+            
+    #         self.logger.info(f"[{session_id}] [Agent] 选择案例 {selected_parsed.case_id} 作为引导案例")
+            
+    #         plan = await self._execute_iterative_flow(selected_case, selected_parsed, context, session_id)
+    #     else:
+    #         cases_for_plan = [r.case for r in similar_cases]
+    #         plan = await self.planner.generate_plan(context, cases_for_plan)
+    #         self.logger.info(f"[{session_id}] [Agent] 计划生成完成, 步骤数: {len(plan.steps)}")
+            
+    #         for step in plan.get_ordered_steps():
+    #             result = await self._execute_step(context, step, session_id)
+    #             context.collected_data[step.name] = result
     
     async def diagnose(self, user_input: UserInput, session_id: str | None = None) -> DiagnosticReport:
         description = user_input.description or ""
@@ -113,38 +169,32 @@ class DTEBaseDiagnosticAgent:
         self.logger.info(f"[{session_id}] [Agent] 诊断开始, 问题描述: {description[:100]}")
         category = context.category.value if context.category else "未知"
         self.logger.info(f"[{session_id}] [Agent] 意图解析完成, 类别: {category}")
-        
-        similar_cases = await self._search_similar_cases(context, session_id)
-        
-        parsed_analyses: list[ParsedAnalysis] = []
-        for result in similar_cases:
-            case = result.case
-            if case.analysis:
-                parsed = await self.case_step_parser.parse_case_analysis(case, session_id)
-                parsed_analyses.append(parsed)
-                self.logger.info(f"[{session_id}] [Agent] 解析案例 {case.case_id}, 步骤数: {len(parsed.steps)}, 迭代检索: {parsed.has_iterative_search}")
-        
-        iterative_parsed = [p for p in parsed_analyses if p.has_iterative_search]
-        
-        if iterative_parsed:
-            self.logger.info(f"[{session_id}] [Agent] 检测到迭代检索需求，使用案例 {[p.case_id for p in iterative_parsed]}")
-            
-            selected_parsed = iterative_parsed[0]
-            selected_result = next((r for r in similar_cases if r.case.case_id == selected_parsed.case_id), similar_cases[0])
-            selected_case = selected_result.case
-            
-            self.logger.info(f"[{session_id}] [Agent] 选择案例 {selected_parsed.case_id} 作为引导案例")
-            
-            plan = await self._execute_iterative_flow(selected_case, selected_parsed, context, session_id)
+
+        need_parsed_cases = []
+
+        scene_guide_case = await self.load_scene_guide_lines(context)
+        if scene_guide_case:
+            self.logger.info(f"[{session_id}] [Agent] 加载场景引导案例: {scene_guide_case.case_id}")
+            need_parsed_cases.append(scene_guide_case)      
         else:
-            cases_for_plan = [r.case for r in similar_cases]
-            plan = await self.planner.generate_plan(context, cases_for_plan)
-            self.logger.info(f"[{session_id}] [Agent] 计划生成完成, 步骤数: {len(plan.steps)}")
+            self.logger.info(f"[{session_id}] [Agent] 未加载场景引导案例")
+            similar_cases = await self._search_similar_cases(context, session_id)
+            if similar_cases:
+                self.logger.info(f"[{session_id}] [Agent] 加载相似案例: {[c.case_id for c in similar_cases]}")
+                need_parsed_cases.extend([c.case for c in similar_cases])
+            else:
+                self.logger.info(f"[{session_id}] [Agent] 未加载相似案例")
+        if len(need_parsed_cases) == 0:
+            raise ValueError("未加载到任何案例, 请联系人工支持")
+        parsed_case = await self.case_step_parser.parse_case_analysis(scene_guide_case, session_id)
+        plan = await self._execute_iterative_flow(scene_guide_case, parsed_case, context, session_id)
+        # for case in need_parsed_cases:
+        #     if not case.analysis:
+        #         self.logger.info(f"[{session_id}] [Agent] 案例 {case.case_id} 没有分析内容, 忽略")
+        #         continue
+        #     parsed = await self.case_step_parser.parse_case_analysis(case, session_id)
+        #     self.logger.info(f"[{session_id}] [Agent] 解析案例 {case.case_id}, 步骤数: {len(parsed.steps)}")
             
-            for step in plan.get_ordered_steps():
-                result = await self._execute_step(context, step, session_id)
-                context.collected_data[step.name] = result
-        
         hypotheses = await self.reasoning_engine.analyze(context)
         self.logger.info(f"[{session_id}] [Agent] 推理完成, 假设数: {len(hypotheses)}")
         
@@ -305,7 +355,7 @@ class DTEBaseDiagnosticAgent:
         
         if self.query_processor and query:
             self.logger.info(f"[{session_id}] [QueryProcessor] 开始查询预处理, 原始查询: {query[:100] if query else ''}")
-            preprocessed = await self.query_processor.process(query, session_id)
+            preprocessed = await self.query_processor.process(context, session_id)
             keywords = preprocessed.all_keywords
             self.logger.info(f"[{session_id}] [QueryProcessor] 预处理完成, 中文关键词: {preprocessed.chinese_keywords}")
             self.logger.info(f"[{session_id}] [QueryProcessor] 预处理完成, 英文关键词: {preprocessed.english_keywords}")
@@ -357,8 +407,7 @@ class DTEBaseDiagnosticAgent:
         """Build tool arguments from context and step parameters."""
         env = context.environment
         params = step.parameters if hasattr(step, 'parameters') else {}
-        node = env.node_info if env else None
-        
+        node = env.node_info[0] if env else None
         match tool_name:
             case "ssh_connect":
                 return {
@@ -371,7 +420,11 @@ class DTEBaseDiagnosticAgent:
             case "log_analysis":
                 return {
                     "om_ip": node.host if node else params.get("om_ip", "localhost"),
-                    "command": params.get("command", "")
+                    "command": params.get("command", ""),
+                    "root_pwd": node.root_password if node else params.get("root_pwd"),
+                    "sopuser_pwd": node.password if node else params.get("sopuser_pwd"),
+                    "ossadm_pwd": node.password if node else params.get("ossadm_pwd"),
+                    "ssh_user": node.username if node else params.get("sshUser"),
                 }
             case "resource_monitor":
                 return {
@@ -381,8 +434,12 @@ class DTEBaseDiagnosticAgent:
             case "database_query":
                 return {
                     "om_ip": node.host if node else params.get("om_ip", "localhost"),
-                    "db_name": params.get("db_name", "rmtaskmgmtdb"),
-                    "sql": params.get("sql", "")
+                    "db_name": params.get("db_name", ""),
+                    "sql": params.get("sql", ""),
+                    "root_pwd": node.root_password if node else params.get("root_pwd"),
+                    "sopuser_pwd": node.password if node else params.get("sopuser_pwd"),
+                    "ossadm_pwd": node.password if node else params.get("ossadm_pwd"),
+                    "ssh_user": node.username if node else params.get("sshUser"),
                 }
             case "case_search":
                 query_value = params.get("query", context.problem_description)

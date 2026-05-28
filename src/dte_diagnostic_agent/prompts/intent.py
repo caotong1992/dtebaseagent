@@ -14,7 +14,7 @@ INTENT_PROMPT = """你是一个专业的运维诊断助手，负责分析用户�
 3. environment: 环境信息
    - cluster_name: 环境名称
    - cluster_type: 集群类型: k8s/vm
-   - node_info: 节点信息
+   - node_info: 节点信息列表 (每个节点信息为一个字典，并包含以下信息)
      - node_name: 节点名称
      - host: 节点IP或域名
      - port: SSH端口，默认值为：22
@@ -32,7 +32,7 @@ INTENT_PROMPT = """你是一个专业的运维诊断助手，负责分析用户�
    - network_issue: 网络问题
    - resource_exhaustion: 资源耗尽
    - configuration_error: 配置错误
-   - collection_task_failed:  采集任务失败
+   - collection_task_failed: 采集任务失败
    - unknown: 未知类型
 
 注意：

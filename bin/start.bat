@@ -122,7 +122,8 @@ echo ========================================
 echo Starting DTE Diagnostic Agent...
 echo ========================================
 cd /d %PROJECT_ROOT%
-start "DTE Diagnostic Agent" /D "%PROJECT_ROOT%" cmd /c "set PYTHONPATH=%PROJECT_ROOT%\src && python -m dte_diagnostic_agent --config %CONFIG% --port %PORT%"
+set PYTHONPATH=%PROJECT_ROOT%\src && python -m dte_diagnostic_agent --config %CONFIG% --port %PORT%
+@REM start "DTE Diagnostic Agent" /D "%PROJECT_ROOT%" cmd /c "set PYTHONPATH=%PROJECT_ROOT%\src && python -m dte_diagnostic_agent --config %CONFIG% --port %PORT%"
 
 REM Wait for service to start
 echo Waiting for service to start...

@@ -1,12 +1,13 @@
 ---
 case_id: CASE-020
-title: 采集任务失败
+title: 采集任务失败定位指南
 category: collector_task
 severity: medium
 created_at: 2024-02-10T09:00:00
 updated_at: 2024-02-10T10:30:00
 tags:
   - collector task
+  - scene guide
 ---
 
 ## 问题现象
@@ -32,6 +33,7 @@ tags:
    | csm.template.not.exist.error | 采集模板不存在         | <br /> |
    | send.ap.error                | 调用采集器失败         | <br /> |
    | task.stopped.manual          | 任务被手动中止         | <br /> |
+   | collector_failed             | 采集失败         | <br /> |
 
 步骤2. 在知识库检索last_error_code相关错误处理流程，并按照处理流程处理。
 

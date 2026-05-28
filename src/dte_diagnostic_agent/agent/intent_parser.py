@@ -45,7 +45,7 @@ class IntentParser:
         
         token_info = self._extract_token_info(response)
         logger.info(f"[{session_id}] [IntentParser] LLM调用完成, 耗时: {elapsed_ms:.2f}ms, tokens: {token_info}")
-        logger.info(f"[{session_id}] [IntentParser] LLM响应: {response.content[:500]}...")
+        logger.info(f"[{session_id}] [IntentParser] LLM响应: {response.content[:5000]}...")
         
         parsed_data = self._parse_response(response.content)
         
@@ -154,29 +154,33 @@ class IntentParser:
     ) -> ClusterInfo | None:
         if env:
             return env
-        
         parsed_env = parsed_data.get("environment", {})
+        logger.info(f"parsed_env: {parsed_env}")
         if not parsed_env:
             return None
-        
-        parsed_node = parsed_env.get("node_info", {})
-        
+        parsed_node = parsed_env.get("node_info", None)
+        logger.info(f"parsed_node: {parsed_node}")
+        if not isinstance(parsed_node, list):
+            raise ValueError("node_info must be a list")
+        node_info_list:[list[NodeInfo]] = []
         def _get_or_default(d: dict, key: str, default: str) -> str:
             val = d.get(key)
             return val if val is not None else default
+        for node in parsed_node:
+            node_info_list.append(NodeInfo(
+                node_name=_get_or_default(node, "node_name", ""),
+                host=_get_or_default(node, "host", ""),
+                port=node.get("port", 22),
+                username=_get_or_default(node, "username", ""),
+                auth_type=_get_or_default(node, "auth_type", "password"),
+                password=_get_or_default(node, "password", ""),
+                root_password=_get_or_default(node, "root_password", ""),
+            ))
         
         return ClusterInfo(
             cluster_name=_get_or_default(parsed_env, "cluster_name", "unknown"),
             cluster_type=_get_or_default(parsed_env, "cluster_type", "vm"),
-            node_info=NodeInfo(
-                node_name=_get_or_default(parsed_node, "node_name", ""),
-                host=_get_or_default(parsed_node, "host", ""),
-                port=parsed_node.get("port", 22),
-                username=_get_or_default(parsed_node, "username", ""),
-                auth_type=_get_or_default(parsed_node, "auth_type", "password"),
-                password=_get_or_default(parsed_node, "password", ""),
-                root_password=_get_or_default(parsed_node, "root_password", ""),
-            ) if parsed_node.get("host") else None,
+            node_info=node_info_list,
             service_name=_get_or_default(parsed_env, "service_name", "DTEBaseService"),
             namespace=parsed_env.get("namespace"),
         )

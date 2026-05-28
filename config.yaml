@@ -45,3 +45,4 @@ knowledge_base:
     enabled: true
     use_llm_translation: true
     cache_size: 100
+is_mock_mode: true
