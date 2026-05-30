@@ -3,6 +3,13 @@
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
+output_example = '''{
+  "session_id": "会话ID",
+  "config_path": "配置文件路径",
+  "check_type": "yaml/json/ini",
+  "valid": true,
+  "issues": []
+}'''
 
 class ConfigCheckInput(BaseModel):
     session_id: str = Field(description="SSH session ID")
@@ -30,5 +37,6 @@ ConfigCheckTool = StructuredTool.from_function(
     coroutine=_config_check,
     name="config_check",
     description="Check service configuration files for issues",
-    args_schema=ConfigCheckInput
+    args_schema=ConfigCheckInput,
+    metadata={"output_example": output_example},
 )

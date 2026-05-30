@@ -132,7 +132,7 @@ class ResultExtractor:
         return extracted
 
     def _extract_by_field(self, source_data: Any, field_name: str, session_id: str = "") -> str | None:
-        """从源数据中按字段名提取值
+        """从源数据中按字段名提取值（忽略大小写匹配）
 
         Args:
             source_data: 源数据，通常是 list[dict] 或 dict
@@ -146,19 +146,24 @@ class ResultExtractor:
             logger.info(f"[{session_id}] [ResultExtractor] _extract_by_field: field_name 为空")
             return None
 
+        field_name_lower = field_name.lower()
+
         if isinstance(source_data, list):
             for item in source_data:
-                if isinstance(item, dict) and field_name in item:
-                    value = item[field_name]
-                    if value is not None:
-                        logger.info(f"[{session_id}] [ResultExtractor] _extract_by_field: 从 list 中提取字段 {field_name} 成功")
-                        return str(value)
+                if isinstance(item, dict):
+                    for key in item:
+                        if key.lower() == field_name_lower:
+                            value = item[key]
+                            if value is not None:
+                                logger.info(f"[{session_id}] [ResultExtractor] _extract_by_field: 从 list 中提取字段 {field_name}（匹配 {key}）成功")
+                                return str(value)
         elif isinstance(source_data, dict):
-            if field_name in source_data:
-                value = source_data[field_name]
-                if value is not None:
-                    logger.info(f"[{session_id}] [ResultExtractor] _extract_by_field: 从 dict 中提取字段 {field_name} 成功")
-                    return str(value)
+            for key in source_data:
+                if key.lower() == field_name_lower:
+                    value = source_data[key]
+                    if value is not None:
+                        logger.info(f"[{session_id}] [ResultExtractor] _extract_by_field: 从 dict 中提取字段 {field_name}（匹配 {key}）成功")
+                        return str(value)
 
         logger.info(f"[{session_id}] [ResultExtractor] _extract_by_field: 未找到字段 {field_name}")
         return None

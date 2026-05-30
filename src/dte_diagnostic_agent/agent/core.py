@@ -14,7 +14,7 @@ from dte_diagnostic_agent.agent.case_step_parser import CaseStepParser
 from dte_diagnostic_agent.agent.info_extractor import KeyInfoExtractor, ResultExtractor
 from dte_diagnostic_agent.agent.models.input import UserInput
 from dte_diagnostic_agent.agent.models.context import DiagnosticContext, ProblemCategory, Severity
-from dte_diagnostic_agent.agent.models.plan import DiagnosticPlan, DiagnosticStep
+from dte_diagnostic_agent.agent.models.plan import DiagnosticPlan, DiagnosticStep, DiagnosticPlanExecutor
 from dte_diagnostic_agent.agent.models.hypothesis import ValidatedHypothesis
 from dte_diagnostic_agent.agent.models.parsed_step import ParsedAnalysis, StepActionType
 from dte_diagnostic_agent.agent.models.report import DiagnosticReport, Solution
@@ -23,29 +23,13 @@ from dte_diagnostic_agent.kb.manager import KnowledgeBaseManager
 from dte_diagnostic_agent.kb.query_processor import QueryProcessor
 from dte_diagnostic_agent.kb.translator import TranslatorService
 from dte_diagnostic_agent.kb.config import QueryProcessorConfig
-from dte_diagnostic_agent.tools.ssh import SSHConnectTool
-from dte_diagnostic_agent.tools.log import LogAnalysisTool
-from dte_diagnostic_agent.tools.resource import ResourceMonitorTool
-from dte_diagnostic_agent.tools.database import DatabaseQueryTool
 from dte_diagnostic_agent.tools.case import create_case_search_tool, MockCaseSearchTool
-from dte_diagnostic_agent.tools.network import NetworkDiagTool
-from dte_diagnostic_agent.tools.k8s import K8sOperationTool
-from dte_diagnostic_agent.tools.config import ConfigCheckTool
 import logging
 
 
 class DTEBaseDiagnosticAgent:
     """DTEBaseService problem diagnostic agent."""
-    
-    STATIC_TOOLS = {
-        "ssh_connect": SSHConnectTool,
-        "log_analysis": LogAnalysisTool,
-        "resource_monitor": ResourceMonitorTool,
-        "database_query": DatabaseQueryTool,
-        "network_diag": NetworkDiagTool,
-        "k8s_operation": K8sOperationTool,
-        "config_check": ConfigCheckTool,
-    }
+
     
     def __init__(
         self,
@@ -66,14 +50,18 @@ class DTEBaseDiagnosticAgent:
             base_url=base_url
         )
         
+        # 收集所有工具
+        self.all_tools = list(self.STATIC_TOOLS.values())
+        # 添加 mock case_search 工具用于文档生成
+        self.all_tools.append(MockCaseSearchTool)
+        
         self.intent_parser = IntentParser(llm=self.llm)
         self.planner = DiagnosticPlanner(llm=self.llm)
         self.reasoning_engine = ReasoningEngine(llm=self.llm)
         self.kb_manager = kb_manager
-        self.case_step_parser = case_step_parser or CaseStepParser(self.llm)
+        self.case_step_parser = case_step_parser or CaseStepParser(self.llm, self.all_tools)
         self.info_extractor = KeyInfoExtractor()
-        self.result_extractor = ResultExtractor()
-        
+        self.result_extractor = ResultExtractor()       
         self._case_search_tool = None
         
         if query_processor_config and query_processor_config.enabled:
@@ -208,6 +196,95 @@ class DTEBaseDiagnosticAgent:
         self.logger.info(f"[{session_id}] [Agent] 诊断完成, 最高置信度: {top_confidence:.2f}")
         
         return report
+
+    async def _set_step_vars(self, context: DiagnosticContext, step: DiagnosticStep, session_id: str):
+        '''
+        设置步骤参数中的模板变量
+        '''
+        if not step.template_vars:
+            return
+        step.parameters = self._replace_template_vars(step.parameters, context.collected_data)
+        self.logger.info(f"[{session_id}] [Agent] 步骤 {step.name} 模板变量替换后参数: {step.parameters}")
+    
+    async def _exec_by_decision(self, context: DiagnosticContext, step: DiagnosticStep, session_id: str):
+        '''
+        执行决策
+        '''
+
+    
+    async def _exec_by_tools(self, context: DiagnosticContext, step: DiagnosticStep, session_id: str):
+        '''
+        执行工具
+        '''
+        result = await self._execute_step(context, step, session_id)
+
+    async def _exec_by_case_search(self, context: DiagnosticContext, step: DiagnosticStep, session_id: str):
+        '''
+        执行案例搜索
+        '''
+        found_cases = self._extract_cases_from_search_result(result, session_id)
+        if not found_cases:
+            self.logger.info(f"[{session_id}] [Agent] case_search 未找到案例")
+            return
+        self.logger.info(f"[{session_id}] [Agent] case_search 找到案例: {[c['case_id'] for c in found_cases]}")    
+        new_case_ids = [c['case_id'] for c in found_cases if c['case_id'] not in processed_case_ids]
+        if new_case_ids:
+            self.logger.info(f"[{session_id}] [Agent] 发现新案例: {new_case_ids}")
+            new_case = await self.kb_manager.get(new_case_ids[0])
+            if new_case and new_case.analysis:
+                processed_case_ids.add(new_case.case_id)            
+                new_parsed = await self.case_step_parser.parse_case_analysis(new_case, session_id)
+                new_steps = self.case_step_parser.to_diagnostic_steps(new_parsed, context.collected_data)
+                            
+                base_priority = len(plan.steps)
+                for i, s in enumerate(new_steps):
+                    s.priority = base_priority + i
+                    s.name = f"{new_case.case_id}_step_{i+1}_{s.tool_name}"
+                plan.add_steps_at_current_index(new_steps)
+                self.logger.info(f"[{session_id}] [Agent] 更新计划, 新增步骤: {[s.name for s in new_steps]}")
+
+    async def _exec_by_keyword_extract(self, context: DiagnosticContext, step: DiagnosticStep, session_id: str):
+        '''
+        执行关键词提取
+        '''
+    
+    async def _update_context_params(self, context: DiagnosticContext, step: DiagnosticStep, session_id: str):
+        '''
+        更新上下文参数
+        '''
+        output_vars = getattr(step, 'output_vars', [])
+        extract_rules = getattr(step, 'extract_rules', {})
+        if not output_vars:
+            return
+        extract_rules_dict = self._convert_extract_rules(extract_rules)
+        extracted = self.result_extractor.extract(result, output_vars, extract_rules_dict, session_id)
+        for var_name, var_value in extracted.items():
+            if var_value is not None:
+                self.logger.info(f"[{session_id}] [Agent] 提取变量: {var_name}={var_value}")
+                context.collected_data[var_name] = var_value
+
+
+
+    async def _exec_by_step(self, context: DiagnosticContext, step: DiagnosticStep, session_id: str):
+        '''
+        执行步骤
+        '''
+        await self._set_step_vars(context, step, session_id)
+        self.logger.info(f"[{session_id}] [Agent] 执行步骤: {step.name}, 工具: {step.tool_name}")
+        if step.action_type == "tool_execute":
+            await self._exec_by_tools(context, step, session_id)
+        elif step.action_type == "decision":
+            await self._exec_by_decision(context, step, session_id)
+        elif step.action_type == "case_search":
+            await self._exec_by_case_search(context, step, session_id)
+        elif step.action_type == "keyword_extract":
+            await self._exec_by_keyword_extract(context, step, session_id)
+        else :
+            raise ValueError(f"未知的步骤类型: {step.action_type}")
+        
+        context.collected_data[step.name] = result
+        await self._update_context_params(context, step, session_id)
+
     
     async def _execute_iterative_flow(
         self,
@@ -217,70 +294,17 @@ class DTEBaseDiagnosticAgent:
         session_id: str
     ) -> DiagnosticPlan:
         self.logger.info(f"[{session_id}] [Agent] 开始迭代诊断流程, 引导案例: {initial_case.case_id}")
-        
         self._extract_initial_vars(context, session_id)
-        
         initial_steps = self.case_step_parser.to_diagnostic_steps(parsed, context.collected_data)
         self.logger.info(f"[{session_id}] [Agent] 引导案例步骤: {[s.name for s in initial_steps]}")
-        
         plan = DiagnosticPlan(
             session_id=session_id,
             steps=initial_steps
         )
+
+        executor = plan.get_executor()
+        executor.execute(context)
         
-        processed_case_ids = {initial_case.case_id}
-        
-        for step in plan.get_ordered_steps():
-            if step.template_vars:
-                step.parameters = self._replace_template_vars(step.parameters, context.collected_data)
-                self.logger.info(f"[{session_id}] [Agent] 步骤 {step.name} 模板变量替换后参数: {step.parameters}")
-            
-            self.logger.info(f"[{session_id}] [Agent] 执行引导步骤: {step.name}, 工具: {step.tool_name}")
-            result = await self._execute_step(context, step, session_id)
-            context.collected_data[step.name] = result
-            
-            output_vars = getattr(step, 'output_vars', [])
-            extract_rules = getattr(step, 'extract_rules', {})
-            
-            if output_vars:
-                extract_rules_dict = self._convert_extract_rules(extract_rules)
-                extracted = self.result_extractor.extract(result, output_vars, extract_rules_dict, session_id)
-                for var_name, var_value in extracted.items():
-                    if var_value is not None:
-                        self.logger.info(f"[{session_id}] [Agent] 提取变量: {var_name}={var_value}")
-                        context.collected_data[var_name] = var_value
-            
-            if step.tool_name == "case_search":
-                found_cases = self._extract_cases_from_search_result(result, session_id)
-                if found_cases:
-                    self.logger.info(f"[{session_id}] [Agent] case_search 找到案例: {[c['case_id'] for c in found_cases]}")
-                    
-                    new_case_ids = [c['case_id'] for c in found_cases if c['case_id'] not in processed_case_ids]
-                    if new_case_ids:
-                        self.logger.info(f"[{session_id}] [Agent] 发现新案例: {new_case_ids}")
-                        
-                        new_case = await self.kb_manager.get(new_case_ids[0])
-                        if new_case and new_case.analysis:
-                            processed_case_ids.add(new_case.case_id)
-                            
-                            new_parsed = await self.case_step_parser.parse_case_analysis(new_case, session_id)
-                            new_steps = self.case_step_parser.to_diagnostic_steps(new_parsed, context.collected_data)
-                            
-                            base_priority = len(plan.steps)
-                            for i, s in enumerate(new_steps):
-                                s.priority = base_priority + i
-                                s.name = f"{new_case.case_id}_step_{i+1}_{s.tool_name}"
-                            
-                            all_steps = list(plan.steps) + new_steps
-                            plan = DiagnosticPlan(session_id=session_id, steps=all_steps)
-                            self.logger.info(f"[{session_id}] [Agent] 更新计划, 新增步骤: {[s.name for s in new_steps]}")
-                            
-                            for s in new_steps:
-                                self.logger.info(f"[{session_id}] [Agent] 执行新案例步骤: {s.name}")
-                                r = await self._execute_step(context, s, session_id)
-                                context.collected_data[s.name] = r
-        
-        return plan
     
     def _convert_extract_rules(self, extract_rules: dict) -> dict:
         from dte_diagnostic_agent.agent.models.parsed_step import ExtractRule as ExtractRuleModel
@@ -372,120 +396,6 @@ class DTEBaseDiagnosticAgent:
         self.logger.info(f"[{session_id}] [Agent] 知识库查询完成, 返回案例数: {len(results)}, 案例ID: {[r.case.case_id for r in results]}")
         
         return results
-    
-    async def _execute_step(self, context: DiagnosticContext, step, session_id: str) -> dict:
-        self.logger.info(f"[{session_id}] [Agent] 执行步骤: {step.name}, 工具: {step.tool_name}")
-        
-        tool = self._get_tool(step.tool_name)
-        if not tool:
-            self.logger.warning(f"[{session_id}] [Agent] 未知工具: {step.tool_name}")
-            return {"error": f"Unknown tool: {step.tool_name}", "executed": False}
-        
-        args = self._build_tool_args(step.tool_name, context, step, session_id)
-        self.logger.info(f"[{session_id}] [Agent] 工具参数: {args}")
-        
-        try:
-            result_str = await tool.ainvoke(args)
-            
-            try:
-                tool_result = json.loads(result_str)
-            except json.JSONDecodeError:
-                tool_result = {"raw_result": result_str}
-            
-            tool_result["executed"] = True
-            tool_result["tool"] = step.tool_name
-            
-            result_summary = self._get_result_summary(tool_result)
-            self.logger.info(f"[{session_id}] [Agent] 执行步骤: {step.name}, 结果摘要: {result_summary}")
-            
-            return tool_result
-        except Exception as e:
-            self.logger.error(f"[{session_id}] [Agent] 工具执行失败: {e}")
-            return {"error": str(e), "executed": False, "tool": step.tool_name}
-    
-    def _build_tool_args(self, tool_name: str, context: DiagnosticContext, step, session_id: str = "") -> dict:
-        """Build tool arguments from context and step parameters."""
-        env = context.environment
-        params = step.parameters if hasattr(step, 'parameters') else {}
-        node = env.node_info[0] if env else None
-        match tool_name:
-            case "ssh_connect":
-                return {
-                    "host": node.host if node else params.get("host", "localhost"),
-                    "port": node.port if node else params.get("port", 22),
-                    "username": node.username if node else params.get("username", "root"),
-                    "password": node.password if node else params.get("password"),
-                    "ssh_key_path": node.ssh_key_path if node else params.get("ssh_key_path")
-                }
-            case "log_analysis":
-                return {
-                    "om_ip": node.host if node else params.get("om_ip", "localhost"),
-                    "command": params.get("command", ""),
-                    "root_pwd": node.root_password if node else params.get("root_pwd"),
-                    "sopuser_pwd": node.password if node else params.get("sopuser_pwd"),
-                    "ossadm_pwd": node.password if node else params.get("ossadm_pwd"),
-                    "ssh_user": node.username if node else params.get("sshUser"),
-                }
-            case "resource_monitor":
-                return {
-                    "session_id": context.session_id,
-                    "metrics": params.get("metrics", ["cpu", "memory", "disk"])
-                }
-            case "database_query":
-                return {
-                    "om_ip": node.host if node else params.get("om_ip", "localhost"),
-                    "db_name": params.get("db_name", ""),
-                    "sql": params.get("sql", ""),
-                    "root_pwd": node.root_password if node else params.get("root_pwd"),
-                    "sopuser_pwd": node.password if node else params.get("sopuser_pwd"),
-                    "ossadm_pwd": node.password if node else params.get("ossadm_pwd"),
-                    "ssh_user": node.username if node else params.get("sshUser"),
-                }
-            case "case_search":
-                query_value = params.get("query", context.problem_description)
-                self.logger.info(f"[{session_id}] [Agent] case_search 参数: query={query_value}, params={params}")
-                return {
-                    "session_id": session_id,
-                    "query": query_value,
-                    "symptoms": params.get("symptoms", context.symptoms),
-                    "category": params.get("category", context.category.value if context.category else None),
-                    "limit": params.get("limit", 5)
-                }
-            case "network_diag":
-                return {
-                    "session_id": context.session_id,
-                    "target_host": node.host if node else params.get("target_host", "localhost"),
-                    "test_type": params.get("test_type", "ping")
-                }
-            case "k8s_operation":
-                return {
-                    "namespace": params.get("namespace", "default"),
-                    "pod_name": params.get("pod_name"),
-                    "action": params.get("action", "status")
-                }
-            case "config_check":
-                return {
-                    "session_id": context.session_id,
-                    "config_path": params.get("config_path", "/etc/dtebaseservice/config.yaml"),
-                    "check_type": params.get("check_type", "yaml")
-                }
-            case _:
-                return {}
-    
-    def _get_result_summary(self, result: dict) -> str:
-        if "status" in result:
-            return f"status={result['status']}"
-        if "anomalies" in result:
-            return f"logs={len(result.get('logs', []))}, anomalies={len(result['anomalies'])}"
-        if "cpu" in result:
-            return f"cpu={result['cpu']}%, memory={result['memory']}%, disk={result['disk']}%"
-        if "connections" in result:
-            return f"connections={result['connections']}, slow_queries={len(result.get('slow_queries', []))}"
-        if "cases_found" in result:
-            return f"cases_found={result['cases_found']}"
-        if "result" in result:
-            return f"result={result['result']}"
-        return "completed"
     
     def _generate_report(
         self,

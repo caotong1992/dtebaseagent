@@ -3,6 +3,17 @@
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
+output_example = '''{
+  "session_id": "会话ID",
+  "target_host": "目标主机",
+  "test_type": "ping/port/traceroute",
+  "reachable": true,
+  "latency_ms": 10,
+  "port_open": true,
+  "port": 80,
+  "hops": [],
+  "error": "错误信息(如果有)"
+}'''
 
 class NetworkDiagInput(BaseModel):
     session_id: str = Field(description="SSH session ID")
@@ -40,5 +51,6 @@ NetworkDiagTool = StructuredTool.from_function(
     coroutine=_network_diag,
     name="network_diag",
     description="Execute network diagnostics: ping, port check, traceroute",
-    args_schema=NetworkDiagInput
+    args_schema=NetworkDiagInput,
+    metadata={"output_example": output_example},
 )

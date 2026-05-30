@@ -3,6 +3,15 @@
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
+output_example = '''{
+  "namespace": "命名空间",
+  "action": "执行的操作",
+  "pods": [{"name": "...", "status": "..."}],
+  "logs": "Pod日志内容(如果有)",
+  "description": "Pod描述信息(如果有)",
+  "events": [],
+  "error": "错误信息(如果有)"
+}'''
 
 class K8sOperationInput(BaseModel):
     namespace: str = Field(description="K8s namespace")
@@ -40,5 +49,6 @@ K8sOperationTool = StructuredTool.from_function(
     coroutine=_k8s_operation,
     name="k8s_operation",
     description="Execute Kubernetes operations: pod status, logs, events",
-    args_schema=K8sOperationInput
+    args_schema=K8sOperationInput,
+    metadata={"output_example": output_example},
 )

@@ -12,6 +12,22 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+output_example = '''{
+  "session_id": "会话ID",
+  "query": "查询文本",
+  "symptoms": ["症状1", "症状2"],
+  "category": "分类",
+  "cases": [
+    {
+      "case_id": "CASE-001",
+      "title": "案例标题",
+      "category": "分类",
+      "score": 0.95
+    }
+  ],
+  "total": 3,
+  "executed": true
+}'''
 
 class CaseSearchInput(BaseModel):
     session_id: str = Field(default="", description="Session ID for logging")
@@ -66,7 +82,8 @@ def create_case_search_tool(kb_manager: "KnowledgeBaseManager") -> StructuredToo
         coroutine=_case_search,
         name="case_search",
         description="Search historical diagnostic cases in knowledge base",
-        args_schema=CaseSearchInput
+        args_schema=CaseSearchInput,
+        metadata={"output_example": output_example},
     )
 
 
@@ -93,5 +110,6 @@ MockCaseSearchTool = StructuredTool.from_function(
     coroutine=_mock_case_search,
     name="case_search",
     description="Mock case search tool (returns empty results)",
-    args_schema=CaseSearchInput
+    args_schema=CaseSearchInput,
+    metadata={"output_example": output_example},
 )

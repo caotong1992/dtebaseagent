@@ -8,8 +8,9 @@ from pydantic import BaseModel, Field
 class StepActionType(str, Enum):
     TOOL_EXECUTE = "tool_execute"
     CASE_SEARCH = "case_search"
-    MANUAL_CHECK = "manual_check"
     DECISION = "decision"
+    CASE_ANALYSIS = "case_analysis"
+    KEYWORD_EXTRACT = "keyword_extract"
 
 
 class ExtractType(str, Enum):
@@ -34,6 +35,10 @@ class ParsedStep(BaseModel):
     template_vars: list[str] = Field(default_factory=list, description="Template variables in parameters")
     output_vars: list[str] = Field(default_factory=list, description="Output variable names")
     extract_rules: dict[str, ExtractRule] = Field(default_factory=dict, description="Extraction rules for output variables")
+    next_step: int | None = Field(default=None, description="Next step number for decision action")
+    next_step_if_true: int | None = Field(default=None, description="Next step number if decision is true")
+    next_step_if_false: int | None = Field(default=None, description="Next step number if decision is false")
+    condition: str | None = Field(default=None, description="Condition for decision action")
 
 
 class ParsedAnalysis(BaseModel):

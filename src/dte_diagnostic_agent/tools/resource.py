@@ -3,6 +3,31 @@
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
+output_example = '''{
+  "session_id": "会话ID",
+  "metrics": {
+    "cpu": {
+      "usage_percent": 45.5,
+      "idle_percent": 54.5
+    },
+    "memory": {
+      "total_mb": 8192,
+      "used_mb": 4096,
+      "free_mb": 4096,
+      "usage_percent": 50.0
+    },
+    "disk": {
+      "total_gb": 100,
+      "used_gb": 60,
+      "available_gb": 40,
+      "usage_percent": 60.0
+    },
+    "network": {
+      "bytes_in": 1000000,
+      "bytes_out": 500000
+    }
+  }
+}'''
 
 class ResourceMonitorInput(BaseModel):
     session_id: str = Field(description="SSH session ID")
@@ -49,5 +74,6 @@ ResourceMonitorTool = StructuredTool.from_function(
     coroutine=_resource_monitor,
     name="resource_monitor",
     description="Collect system resource metrics including CPU, memory, disk",
-    args_schema=ResourceMonitorInput
+    args_schema=ResourceMonitorInput,
+    metadata={"output_example": output_example},
 )

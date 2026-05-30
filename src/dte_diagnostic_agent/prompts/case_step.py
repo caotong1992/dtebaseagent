@@ -6,6 +6,8 @@ CASE_STEP_PARSE_PROMPT = """你是一个诊断步骤解析器。请分析以下�
 - 案例ID: {case_id}
 - 案例标题: {title}
 
+{available_tools}
+
 ## 分析过程原文
 {analysis_text}
 
@@ -14,22 +16,26 @@ CASE_STEP_PARSE_PROMPT = """你是一个诊断步骤解析器。请分析以下�
 1. step_number: 步骤序号
 2. action_type: 动作类型，可选值：
    - tool_execute: 执行工具（如查询数据库、SSH执行命令）
-   - case_search: 知识库检索（用新信息检索其他案例）
-   - manual_check: 手动检查（需要人工介入）
+   - decision: 条件判断（根据结果决定下一步）为 tool_execute 时必填
+   - case_analysis: 案例分析（根据案例信息进行分析）
+   - keyword_extract: 变量提取（根据extract_rules从输入中提取变量）
    - decision: 条件判断（根据结果决定下一步）
 3. tool_name: 工具名称（action_type 为 tool_execute 时必填）
-   - 可选值: database_query, ssh_connect, log_analysis, case_search, network_diag, k8s_operation, config_check, resource_monitor
 4. parameters: 参数字典，支持模板变量如 {{task_id}}, {{last_error_code}}
 5. description: 步骤描述原文
-6. next_action: 下一步指引（如果有）
-7. template_vars: 模板变量列表
-8. output_vars: 该步骤产出的变量名列表（如 ["last_error_code", "task_id"]）
-9. extract_rules: 变量提取规则字典，key为output_vars中的变量名，每个规则包含：
+6. next_step: 下一步步骤序号, 非decision必填
+7. next_step_if_true: 条件为True时执行的步骤序号（如果有）,decision类型必填
+8. next_step_if_false: 条件为False时执行的步骤序号（如果有）,decision类型必填
+9. template_vars: 模板变量列表
+10. output_vars: 该步骤产出的变量名列表（如 ["last_error_code", "task_id"]）
+11. extract_rules: 变量提取规则字典，key为output_vars中的变量名，每个规则包含：
    - source: 数据来源字段名，常用值：
      - "rows": 从结果数组中提取（database_query工具返回格式）
      - "result": 从顶层结果直接提取
+     - "logs": 从日志结果提取
    - type: 提取类型，可选值：field（字段提取）、regex（正则匹配）、json_path（JSON路径）
    - value: 提取值（字段名、正则表达式或JSON路径）
+12. condition: 条件判断（action_type 为 decision 时必填，根据结果决定下一步执行的步骤，格式为表达式，如 "len(last_error_code) == 0"）
 
 ## 输出示例
 ```json

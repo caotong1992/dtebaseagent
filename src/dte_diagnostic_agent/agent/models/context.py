@@ -51,10 +51,18 @@ class TimeRange(BaseModel):
 class DiagnosticContext(BaseModel):
     session_id: str = Field(description="Session ID")
     problem_description: str = Field(description="Problem description")
-    time_range: TimeRange = Field(description="Time range")
+    time_range: TimeRange | None = Field(default=None, description="Time range")
     environment: ClusterInfo | None = Field(default=None, description="Environment info")
     symptoms: list[str] = Field(default_factory=list, description="Symptom list")
     priority: Severity = Field(default=Severity.MEDIUM, description="Priority level")
     category: ProblemCategory | None = Field(default=None, description="Problem category")
     collected_data: dict[str, Any] = Field(default_factory=dict, description="步骤执行收集的数据")
     metadata: dict[str, object] = Field(default_factory=dict, description="Additional metadata")
+    extracted_vars: dict[str, Any] = Field(default_factory=dict, description="提取的变量")
+    retrieval_results: dict[str, Any] = Field(default_factory=dict, description="检索结果")
+
+    def set_var(self, name: str, value: Any):
+        self.collected_data[name.lower()] = value
+
+    def get_var_value(self, name: str) -> Any:
+        return self.collected_data.get(name.lower(), None)

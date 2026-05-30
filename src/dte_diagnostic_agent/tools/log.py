@@ -4,6 +4,15 @@ from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 import requests,json,os
 
+output_example = '''{
+  "command": "执行的命令",
+  "logs": {
+    "服务实例-1": "日志内容1",
+    "服务实例-2": "日志内容2"
+  },
+  "error": "错误信息(如果有)"
+}'''
+
 class LogAnalysisInput(BaseModel):
     om_ip: str = Field(description="environment om ip")
     command: str = Field(description="command to query log")
@@ -23,7 +32,7 @@ async def _log_analysis(
 ) -> str:
     results = {
         "command": command,
-    }
+    } 
     if not os.environ.get('mock_mode'):
         payload = {
             "host": om_ip,
@@ -54,5 +63,6 @@ LogAnalysisTool = StructuredTool.from_function(
     coroutine=_log_analysis,
     name="log_analysis",
     description="Analyze service logs to find errors and anomalies",
-    args_schema=LogAnalysisInput
+    args_schema=LogAnalysisInput,
+    metadata={"output_example": output_example},
 )

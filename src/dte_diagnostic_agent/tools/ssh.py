@@ -3,6 +3,10 @@
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
+output_example = '''{
+  "status": "success/failed",
+  "message": "连接结果信息"
+}'''
 
 class SSHConnectInput(BaseModel):
     host: str = Field(description="Target host IP or domain")
@@ -43,5 +47,6 @@ SSHConnectTool = StructuredTool.from_function(
     coroutine=_ssh_connect,
     name="ssh_connect",
     description="Connect to target server node for executing remote commands",
-    args_schema=SSHConnectInput
+    args_schema=SSHConnectInput,
+    metadata={"output_example": output_example},
 )
